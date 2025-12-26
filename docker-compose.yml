@@ -1,0 +1,70 @@
+services:
+  zookeeper:
+    image: bitnami/zookeeper:3.9
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: bitnami/kafka:3.7
+    depends_on:
+      - zookeeper
+    environment:
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - ALLOW_PLAINTEXT_LISTENER=yes
+    ports:
+      - "9092:9092"
+
+  gateway:
+    build: ./services/gateway-service
+    environment:
+      - SERVER_PORT=8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      - user-service
+      - reservation-service
+      - payment-service
+
+  user-service:
+    build: ./services/user-service
+    environment:
+      - SERVER_PORT=8081
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    ports:
+      - "8081:8081"
+    depends_on:
+      - kafka
+
+  reservation-service:
+    build: ./services/reservation-service
+    environment:
+      - SERVER_PORT=8082
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    ports:
+      - "8082:8082"
+    depends_on:
+      - kafka
+
+  payment-service:
+    build: ./services/payment-service
+    environment:
+      - SERVER_PORT=8083
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    ports:
+      - "8083:8083"
+    depends_on:
+      - kafka
+
+  notification-service:
+    build: ./services/notification-service
+    environment:
+      - SERVER_PORT=8084
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    ports:
+      - "8084:8084"
+    depends_on:
+      - kafka
