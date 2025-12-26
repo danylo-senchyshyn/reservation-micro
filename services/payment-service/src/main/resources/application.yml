@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: payment-service
+
+server:
+  port: 8083
+
+app:
+  kafka:
+    topics:
+      reservation-created: reservations.created.v1
+      payment-confirmed: payments.confirmed.v1
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always

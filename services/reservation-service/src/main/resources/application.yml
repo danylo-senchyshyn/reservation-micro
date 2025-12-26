@@ -1,0 +1,19 @@
+spring:
+  application:
+    name: reservation-service
+
+server:
+  port: 8082
+
+app:
+  kafka:
+    topic: reservations.created.v1
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always

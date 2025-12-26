@@ -1,0 +1,20 @@
+spring:
+  application:
+    name: notification-service
+
+server:
+  port: 8084
+
+app:
+  kafka:
+    topics:
+      payment-confirmed: payments.confirmed.v1
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always

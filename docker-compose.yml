@@ -1,70 +1,144 @@
+networks:
+  backend:
+    driver: bridge
+
 services:
   zookeeper:
-    image: bitnami/zookeeper:3.9
+    image: confluentinc/cp-zookeeper:7.3.0
+    networks: [backend]
     environment:
-      - ALLOW_ANONYMOUS_LOGIN=yes
+      ZOOKEEPER_CLIENT_PORT: 2181
     ports:
       - "2181:2181"
 
   kafka:
-    image: bitnami/kafka:3.7
+    image: confluentinc/cp-kafka:7.3.0
+    container_name: kafka
+    networks: [backend]
     depends_on:
       - zookeeper
-    environment:
-      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
-      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
-      - ALLOW_PLAINTEXT_LISTENER=yes
     ports:
-      - "9092:9092"
+      - "9093:9093"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
 
-  gateway:
-    build: ./services/gateway-service
-    environment:
-      - SERVER_PORT=8080
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://localhost:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server kafka:9092 --list || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    networks: [backend]
     ports:
-      - "8080:8080"
-    depends_on:
-      - user-service
-      - reservation-service
-      - payment-service
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db_init:/docker-entrypoint-initdb.d
 
   user-service:
-    build: ./services/user-service
-    environment:
-      - SERVER_PORT=8081
-      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
-    ports:
-      - "8081:8081"
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: user-service-image
+    networks: [backend]
     depends_on:
-      - kafka
+      postgres:
+        condition: service_started
+    ports:
+      - "8081:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_URL: jdbc:postgresql://postgres:5432/user_db
+      DB_USER: postgres
+      DB_PASSWORD: postgres
 
   reservation-service:
-    build: ./services/reservation-service
-    environment:
-      - SERVER_PORT=8082
-      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
-    ports:
-      - "8082:8082"
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: reservation-service-image
+    networks: [backend]
     depends_on:
-      - kafka
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_started
+    ports:
+      - "8082:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_URL: jdbc:postgresql://postgres:5432/reservation_db
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
 
   payment-service:
-    build: ./services/payment-service
-    environment:
-      - SERVER_PORT=8083
-      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
-    ports:
-      - "8083:8083"
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: payment-service-image
+    networks: [backend]
     depends_on:
-      - kafka
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_started
+    ports:
+      - "8083:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_URL: jdbc:postgresql://postgres:5432/payment_db
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
 
   notification-service:
-    build: ./services/notification-service
-    environment:
-      - SERVER_PORT=8084
-      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
-    ports:
-      - "8084:8084"
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: notification-service-image
+    networks: [backend]
     depends_on:
-      - kafka
+      kafka:
+        condition: service_healthy
+    ports:
+      - "8084:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+
+  gateway-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: gateway-service-image
+    networks: [backend]
+    depends_on:
+      user-service:
+        condition: service_started
+      reservation-service:
+        condition: service_started
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      USER_SERVICE_URL: http://user-service:8080
+      RESERVATION_SERVICE_URL: http://reservation-service:8080
+
+volumes:
+  postgres_data:
