@@ -14,7 +14,8 @@ public class ReservationCreatedListener {
 
     @KafkaListener(
             topics = "${app.kafka.topics.reservation-created}",
-            groupId = "payment-service-group"
+            groupId = "payment-service-group",
+            containerFactory = "kafkaListenerContainerFactory"
     )
     public void onReservationCreated(ReservationCreatedEvent event) {
         paymentService.processPayment(event);

@@ -2,11 +2,13 @@ package com.bp.reservations.api;
 
 import com.bp.reservations.api.dto.CreateReservationRequest;
 import com.bp.reservations.api.dto.ReservationResponse;
+import com.bp.reservations.entity.OutboxEvent;
 import com.bp.reservations.entity.Reservation;
 import com.bp.reservations.entity.ReservationStatus;
-import com.bp.reservations.kafka.ReservationProducer;
+import com.bp.reservations.repository.OutboxEventRepository;
 import com.bp.reservations.repository.ReservationRepository;
 import com.bp.reservations.service.ReservationService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,7 +32,10 @@ class ReservationServiceTest {
     private ReservationRepository reservationRepository;
 
     @Mock
-    private ReservationProducer reservationProducer;
+    private OutboxEventRepository outboxEventRepository; // New mock for Outbox
+    
+    @Mock
+    private ObjectMapper objectMapper; // New mock for ObjectMapper
 
     @InjectMocks
     private ReservationService reservationService;
@@ -58,7 +63,7 @@ class ReservationServiceTest {
     // ---------- CREATE ----------
 
     @Test
-    void shouldCreateReservation() {
+    void shouldCreateReservation() throws Exception { // Add "throws Exception" for ObjectMapper
         CreateReservationRequest request =
                 new CreateReservationRequest(1L, 1L, FROM, TO);
 
@@ -68,6 +73,8 @@ class ReservationServiceTest {
                     saved.setId(1L);
                     return saved;
                 });
+        
+        when(objectMapper.writeValueAsString(any())).thenReturn("{\"some\":\"json\"}"); // Mock ObjectMapper behavior
 
         ReservationResponse response =
                 reservationService.createReservation(request);
@@ -76,7 +83,7 @@ class ReservationServiceTest {
         assertThat(response.status()).isEqualTo(ReservationStatus.CREATED);
 
         verify(reservationRepository).save(any(Reservation.class));
-        verify(reservationProducer).sendReservationCreatedEvent(any());
+        verify(outboxEventRepository).save(any(OutboxEvent.class)); // Verify outbox save
     }
 
     // ---------- UPDATE STATUS ----------

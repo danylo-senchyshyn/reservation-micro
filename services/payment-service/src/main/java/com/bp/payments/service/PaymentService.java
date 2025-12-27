@@ -5,11 +5,15 @@ import com.bp.common.events.PaymentFailedEvent;
 import com.bp.common.events.ReservationCreatedEvent;
 import com.bp.payments.api.dto.CreatePaymentRequest;
 import com.bp.payments.api.dto.PaymentResponse;
+import com.bp.payments.entity.OutboxEvent;
+import com.bp.payments.entity.OutboxEventStatus;
 import com.bp.payments.entity.Payment;
 import com.bp.payments.entity.PaymentStatus;
 import com.bp.payments.exception.EntityNotFoundException;
-import com.bp.payments.kafka.PaymentProducer;
+import com.bp.payments.repository.OutboxEventRepository;
 import com.bp.payments.repository.PaymentRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,7 +29,8 @@ import java.util.List;
 public class PaymentService {
 
     private final PaymentRepository paymentRepository;
-    private final PaymentProducer paymentProducer;
+    private final OutboxEventRepository outboxEventRepository;
+    private final ObjectMapper objectMapper;
 
     @Transactional
     public void processPayment(ReservationCreatedEvent event) {
@@ -113,16 +118,30 @@ public class PaymentService {
 
         payment.setStatus(PaymentStatus.CONFIRMED);
 
-        paymentProducer.sendPaymentConfirmedEvent(
-                new PaymentConfirmedEvent(
-                        payment.getId(),
-                        payment.getReservationId(),
-                        toEventStatus(payment.getStatus())
-                )
+        PaymentConfirmedEvent event = new PaymentConfirmedEvent(
+                payment.getId(),
+                payment.getReservationId(),
+                toEventStatus(payment.getStatus())
         );
 
+        try {
+            OutboxEvent outboxEvent = OutboxEvent.builder()
+                    .aggregateType("Payment")
+                    .aggregateId(payment.getId())
+                    .eventType(event.getClass().getSimpleName())
+                    .payload(objectMapper.writeValueAsString(event))
+                    .status(OutboxEventStatus.NEW)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            outboxEventRepository.save(outboxEvent);
+            log.info("Outbox event saved for paymentId={} (Confirmed)", payment.getId());
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize PaymentConfirmedEvent for paymentId={}: {}", payment.getId(), e.getMessage());
+            throw new RuntimeException("Failed to serialize event", e);
+        }
+
         log.info(
-                "Payment confirmed and event published: paymentId={}, reservationId={}",
+                "Payment confirmed and outbox event added: paymentId={}, reservationId={}",
                 payment.getId(),
                 payment.getReservationId()
         );
@@ -159,16 +178,30 @@ public class PaymentService {
 
         payment.setStatus(PaymentStatus.FAILED);
 
-        paymentProducer.sendPaymentFailedEvent(
-                new PaymentFailedEvent(
-                        payment.getId(),
-                        payment.getReservationId(),
-                        reason
-                )
+        PaymentFailedEvent event = new PaymentFailedEvent(
+                payment.getId(),
+                payment.getReservationId(),
+                reason
         );
 
+        try {
+            OutboxEvent outboxEvent = OutboxEvent.builder()
+                    .aggregateType("Payment")
+                    .aggregateId(payment.getId())
+                    .eventType(event.getClass().getSimpleName())
+                    .payload(objectMapper.writeValueAsString(event))
+                    .status(OutboxEventStatus.NEW)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            outboxEventRepository.save(outboxEvent);
+            log.info("Outbox event saved for paymentId={} (Failed)", payment.getId());
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize PaymentFailedEvent for paymentId={}: {}", payment.getId(), e.getMessage());
+            throw new RuntimeException("Failed to serialize event", e);
+        }
+
         log.info(
-                "Payment failed and event published: paymentId={}, reservationId={}",
+                "Payment failed and outbox event added: paymentId={}, reservationId={}",
                 payment.getId(),
                 payment.getReservationId()
         );

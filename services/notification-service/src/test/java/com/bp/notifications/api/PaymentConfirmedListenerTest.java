@@ -1,7 +1,9 @@
-package com.bp.payments.api;
+package com.bp.notifications.api;
 
 import com.bp.common.events.PaymentConfirmedEvent;
 import com.bp.common.events.PaymentStatus;
+import com.bp.notifications.kafka.PaymentConfirmedListener;
+import com.bp.notifications.service.NotificationService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -30,6 +32,6 @@ class PaymentConfirmedListenerTest {
         listener.onPaymentConfirmed(event);
 
         verify(notificationService)
-                .handlePaymentConfirmed(event);
+                .processPaymentConfirmation(event);
     }
 }
