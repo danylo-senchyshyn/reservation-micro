@@ -19,6 +19,6 @@ public class ReservationProducer {
 
     public void sendReservationCreatedEvent(ReservationCreatedEvent event) {
         log.info("Sending reservation created event: {}", event);
-        kafkaTemplate.send(topic, event.reservationId(), event);
+        kafkaTemplate.send(topic, String.valueOf(event.reservationId()), event);
     }
 }

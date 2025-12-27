@@ -7,13 +7,11 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
-@Entity
+@Data @Entity @Builder
 @Table(name = "payments")
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
+@NoArgsConstructor @AllArgsConstructor
 public class Payment {
 
     @Id
@@ -26,6 +24,10 @@ public class Payment {
     @Column(nullable = false)
     private BigDecimal amount;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String status;
+    private PaymentStatus status;
+
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 }

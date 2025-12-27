@@ -1,10 +1,14 @@
 package com.bp.reservations.api.dto;
 
+import com.bp.reservations.entity.ReservationStatus;
+
+import java.time.LocalDateTime;
+
 public record ReservationResponse(
-        String id,
-        String userId,
-        String resourceId,
-        String fromIso,
-        String toIso,
-        String status
+        Long id,
+        Long userId,
+        Long resourceId,
+        LocalDateTime from,
+        LocalDateTime to,
+        ReservationStatus status
 ) {}

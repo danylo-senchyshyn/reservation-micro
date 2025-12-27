@@ -1,9 +1,11 @@
 package com.bp.common.events;
 
+import java.time.LocalDateTime;
+
 public record ReservationCreatedEvent(
-        String reservationId,
-        String userId,
-        String resourceId,
-        String fromIso,
-        String toIso
+        Long reservationId,
+        Long userId,
+        Long resourceId,
+        LocalDateTime from,
+        LocalDateTime to
 ) {}

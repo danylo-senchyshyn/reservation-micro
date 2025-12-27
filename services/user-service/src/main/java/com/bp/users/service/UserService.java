@@ -46,6 +46,11 @@ public class UserService {
         userRepository.deleteById(id);
     }
 
+    @Transactional
+    public void deleteAllUsers() {
+        userRepository.deleteAll();
+    }
+
     private UserResponse toResponse(User user) {
         return new UserResponse(user.getId().toString(), user.getEmail(), user.getName());
     }

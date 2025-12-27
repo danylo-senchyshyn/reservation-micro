@@ -6,13 +6,11 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.time.Instant;
+import java.time.LocalDateTime;
 
-@Entity
+@Entity @Data @Builder
 @Table(name = "reservations")
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
+@NoArgsConstructor @AllArgsConstructor
 public class Reservation {
 
     @Id
@@ -23,13 +21,13 @@ public class Reservation {
     private Long userId;
 
     @Column(nullable = false)
-    private String resourceId;
+    private Long resourceId;
 
     @Column(nullable = false)
-    private Instant startTime;
+    private LocalDateTime startTime;
 
     @Column(nullable = false)
-    private Instant endTime;
+    private LocalDateTime endTime;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

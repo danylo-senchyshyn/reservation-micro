@@ -1,8 +1,13 @@
 package com.bp.payments.service;
 
 import com.bp.common.events.PaymentConfirmedEvent;
+import com.bp.common.events.PaymentFailedEvent;
 import com.bp.common.events.ReservationCreatedEvent;
+import com.bp.payments.api.dto.CreatePaymentRequest;
+import com.bp.payments.api.dto.PaymentResponse;
 import com.bp.payments.entity.Payment;
+import com.bp.payments.entity.PaymentStatus;
+import com.bp.payments.exception.EntityNotFoundException;
 import com.bp.payments.kafka.PaymentProducer;
 import com.bp.payments.repository.PaymentRepository;
 import lombok.RequiredArgsConstructor;
@@ -11,10 +16,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class PaymentService {
 
     private final PaymentRepository paymentRepository;
@@ -22,25 +29,194 @@ public class PaymentService {
 
     @Transactional
     public void processPayment(ReservationCreatedEvent event) {
-        log.info("Processing payment for reservation: {}", event.reservationId());
+        log.info(
+                "Processing payment for reservationCreatedEvent: reservationId={}, userId={}, resourceId={}",
+                event.reservationId(),
+                event.userId(),
+                event.resourceId()
+        );
 
-        // In a real system, you would calculate the amount
-        BigDecimal amount = new BigDecimal("100.00");
+        if (paymentRepository.existsByReservationId(event.reservationId())) {
+            log.warn(
+                    "Payment already exists for reservationId={}, skipping",
+                    event.reservationId()
+            );
+            return;
+        }
 
         Payment payment = Payment.builder()
-                .reservationId(Long.parseLong(event.reservationId()))
-                .amount(amount)
-                .status("CONFIRMED")
+                .reservationId(event.reservationId())
+                .amount(calculateAmount(event))
+                .status(PaymentStatus.CREATED)
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        paymentRepository.save(payment);
+
+        log.info(
+                "Payment created for reservationId={}, paymentId={}",
+                event.reservationId(),
+                payment.getId()
+        );
+    }
+
+    @Transactional
+    public PaymentResponse create(CreatePaymentRequest request) {
+        log.info(
+                "Creating payment for reservationId={}, amount={}",
+                request.reservationId(),
+                request.amount()
+        );
+
+        if (paymentRepository.existsByReservationId(request.reservationId())) {
+            log.warn("Payment already exists for reservationId={}", request.reservationId());
+            throw new IllegalStateException("Payment already exists for reservationId=" + request.reservationId());
+        }
+
+        Payment payment = Payment.builder()
+                .reservationId(request.reservationId())
+                .amount(request.amount())
+                .status(PaymentStatus.CREATED)
+                .createdAt(LocalDateTime.now())
                 .build();
 
         payment = paymentRepository.save(payment);
 
-        PaymentConfirmedEvent paymentConfirmedEvent = new PaymentConfirmedEvent(
-                payment.getId().toString(),
-                payment.getReservationId().toString(),
+        log.info(
+                "Payment created successfully: paymentId={}, reservationId={}, status={}",
+                payment.getId(),
+                payment.getReservationId(),
                 payment.getStatus()
         );
 
-        paymentProducer.sendPaymentConfirmedEvent(paymentConfirmedEvent);
+        return toResponse(payment);
+    }
+
+    @Transactional
+    public PaymentResponse confirm(Long id) {
+        Payment payment = getPayment(id);
+
+        if (payment.getStatus() == PaymentStatus.CONFIRMED) {
+            log.warn("Confirm skipped: paymentId={} already CONFIRMED", id);
+            return toResponse(payment);
+        }
+        if (payment.getStatus() == PaymentStatus.FAILED) {
+            log.warn("Confirm rejected: paymentId={} already FAILED", id);
+            return toResponse(payment);
+        }
+
+        log.info(
+                "Confirming payment: paymentId={}, reservationId={}",
+                payment.getId(),
+                payment.getReservationId()
+        );
+
+        payment.setStatus(PaymentStatus.CONFIRMED);
+
+        paymentProducer.sendPaymentConfirmedEvent(
+                new PaymentConfirmedEvent(
+                        payment.getId(),
+                        payment.getReservationId(),
+                        toEventStatus(payment.getStatus())
+                )
+        );
+
+        log.info(
+                "Payment confirmed and event published: paymentId={}, reservationId={}",
+                payment.getId(),
+                payment.getReservationId()
+        );
+
+        return toResponse(payment);
+    }
+
+    @Transactional
+    public PaymentResponse fail(Long id, String reason) {
+        Payment payment = getPayment(id);
+
+        if (payment.getStatus() == PaymentStatus.FAILED) {
+            log.warn(
+                    "Fail skipped: paymentId={} already FAILED",
+                    id
+            );
+            return toResponse(payment);
+        }
+
+        if (payment.getStatus() == PaymentStatus.CONFIRMED) {
+            log.warn(
+                    "Fail rejected: paymentId={} already CONFIRMED",
+                    id
+            );
+            return toResponse(payment);
+        }
+
+        log.info(
+                "Failing payment: paymentId={}, reservationId={}, reason={}",
+                payment.getId(),
+                payment.getReservationId(),
+                reason
+        );
+
+        payment.setStatus(PaymentStatus.FAILED);
+
+        paymentProducer.sendPaymentFailedEvent(
+                new PaymentFailedEvent(
+                        payment.getId(),
+                        payment.getReservationId(),
+                        reason
+                )
+        );
+
+        log.info(
+                "Payment failed and event published: paymentId={}, reservationId={}",
+                payment.getId(),
+                payment.getReservationId()
+        );
+
+        return toResponse(payment);
+    }
+
+    @Transactional(readOnly = true)
+    public PaymentResponse getById(Long id) {
+        log.debug("Fetching payment by id={}", id);
+        return toResponse(getPayment(id));
+    }
+
+    @Transactional(readOnly = true)
+    public List<PaymentResponse> getByReservationId(Long reservationId) {
+        log.debug("Fetching payments by reservationId={}", reservationId);
+
+        return paymentRepository.findByReservationId(reservationId)
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    private Payment getPayment(Long id) {
+        return paymentRepository.findById(id)
+                .orElseThrow(() -> {
+                    log.warn("Payment not found: paymentId={}", id);
+                    return new EntityNotFoundException(
+                            "Payment with id " + id + " not found"
+                    );
+                });
+    }
+
+    private PaymentResponse toResponse(Payment payment) {
+        return new PaymentResponse(
+                payment.getId(),
+                payment.getReservationId(),
+                payment.getAmount(),
+                payment.getStatus(),
+                payment.getCreatedAt()
+        );
+    }
+
+    private com.bp.common.events.PaymentStatus toEventStatus(PaymentStatus status) {
+        return com.bp.common.events.PaymentStatus.valueOf(status.name());
+    }
+
+    private BigDecimal calculateAmount(ReservationCreatedEvent event) {
+        return BigDecimal.valueOf(100);
     }
 }

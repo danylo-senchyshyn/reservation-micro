@@ -38,4 +38,10 @@ public class UserController {
     public void delete(@PathVariable Long id) {
         userService.deleteUser(id);
     }
+
+    @DeleteMapping
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteAll() {
+        userService.deleteAllUsers();
+    }
 }

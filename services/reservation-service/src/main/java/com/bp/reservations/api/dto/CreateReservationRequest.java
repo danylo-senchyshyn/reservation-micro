@@ -1,10 +1,13 @@
 package com.bp.reservations.api.dto;
 
-import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Future;
+import jakarta.validation.constraints.NotNull;
+
+import java.time.LocalDateTime;
 
 public record CreateReservationRequest(
-        @NotBlank String userId,
-        @NotBlank String resourceId,
-        @NotBlank String fromIso,
-        @NotBlank String toIso
+        @NotNull Long userId,
+        @NotNull Long resourceId,
+        @NotNull @Future LocalDateTime from,
+        @NotNull @Future LocalDateTime to
 ) {}
