@@ -3,15 +3,20 @@ package com.bp.reservations.service;
 import com.bp.common.events.ReservationCreatedEvent;
 import com.bp.reservations.api.dto.CreateReservationRequest;
 import com.bp.reservations.api.dto.ReservationResponse;
+import com.bp.reservations.entity.OutboxEvent;
+import com.bp.reservations.entity.OutboxEventStatus;
 import com.bp.reservations.entity.Reservation;
 import com.bp.reservations.entity.ReservationStatus;
-import com.bp.reservations.kafka.ReservationProducer;
+import com.bp.reservations.repository.OutboxEventRepository;
 import com.bp.reservations.repository.ReservationRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Slf4j
@@ -20,7 +25,8 @@ import java.util.List;
 public class ReservationService {
 
     private final ReservationRepository reservationRepository;
-    private final ReservationProducer reservationProducer;
+    private final OutboxEventRepository outboxEventRepository;
+    private final ObjectMapper objectMapper;
 
     @Transactional
     public ReservationResponse createReservation(CreateReservationRequest request) {
@@ -60,10 +66,24 @@ public class ReservationService {
                 reservation.getEndTime()
         );
 
-        reservationProducer.sendReservationCreatedEvent(event);
+        try {
+            OutboxEvent outboxEvent = OutboxEvent.builder()
+                    .aggregateType("Reservation")
+                    .aggregateId(reservation.getId())
+                    .eventType(event.getClass().getSimpleName())
+                    .payload(objectMapper.writeValueAsString(event))
+                    .status(OutboxEventStatus.NEW)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            outboxEventRepository.save(outboxEvent);
+            log.info("Outbox event saved for reservationId={}", reservation.getId());
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize ReservationCreatedEvent for reservationId={}: {}", reservation.getId(), e.getMessage());
+            throw new RuntimeException("Failed to serialize event", e);
+        }
 
         log.info(
-                "ReservationCreatedEvent sent: reservationId={}",
+                "Reservation created and outbox event added: reservationId={}",
                 reservation.getId()
         );
 
@@ -84,10 +104,52 @@ public class ReservationService {
 
     @Transactional(readOnly = true)
     public List<ReservationResponse> getAll() {
-        return reservationRepository.findAll()
-                .stream()
+        return reservationRepository.findAll().stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    @Transactional
+    public void updateReservationStatus(Long reservationId, com.bp.common.events.PaymentStatus paymentStatus) {
+        log.info(
+                "Attempting to update reservation status for reservationId: {} with payment status: {}",
+                reservationId,
+                paymentStatus
+        );
+
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> {
+                    log.warn("Reservation not found for reservationId={}", reservationId);
+                    return new com.bp.reservations.exception.EntityNotFoundException(
+                            "Reservation with id " + reservationId + " not found"
+                    );
+                });
+
+        ReservationStatus newStatus;
+        switch (paymentStatus) {
+            case CONFIRMED:
+                newStatus = ReservationStatus.PAID;
+                break;
+            case FAILED:
+                newStatus = ReservationStatus.PAYMENT_FAILED;
+                break;
+            default:
+                log.warn("Unknown payment status received: {}. Skipping reservation status update.", paymentStatus);
+                return;
+        }
+
+        if (reservation.getStatus() == newStatus) {
+            log.warn("Reservation {} already has status {}. Skipping update.", reservationId, newStatus);
+            return;
+        }
+
+        log.info(
+                "Updating reservation status: id={}, {} -> {}",
+                reservationId,
+                reservation.getStatus(),
+                newStatus
+        );
+        reservation.setStatus(newStatus);
     }
 
     @Transactional(readOnly = true)
