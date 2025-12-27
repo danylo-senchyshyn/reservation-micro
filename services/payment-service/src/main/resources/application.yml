@@ -1,6 +1,12 @@
 spring:
   application:
     name: payment-service
+  kafka:
+    consumer:
+      # Common Kafka consumer properties can go here
+      # For example:
+      # properties:
+      #   spring.json.trusted.packages: "*" # Trust all packages for JSON deserialization
 
 server:
   port: 8083
@@ -10,6 +16,11 @@ app:
     topics:
       reservation-created: reservations.created.v1
       payment-confirmed: payments.confirmed.v1
+      payment-failed: payments.failed.v1 # Add payment failed topic
+    dlt-topic:
+      payment-service: payment.service.dlt
+  outbox:
+    scheduler-fixed-rate: 5000 # 5 seconds
 
 management:
   endpoints:

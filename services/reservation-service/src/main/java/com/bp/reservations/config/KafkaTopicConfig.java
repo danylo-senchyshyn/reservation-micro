@@ -9,7 +9,7 @@ import org.springframework.kafka.config.TopicBuilder;
 @Configuration
 public class KafkaTopicConfig {
 
-    @Value("${app.kafka.topic}")
+    @Value("${app.kafka.topics.reservation-created}")
     private String topic;
 
     @Bean

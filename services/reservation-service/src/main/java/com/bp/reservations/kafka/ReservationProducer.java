@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class ReservationProducer {
 
-    @Value("${app.kafka.topic}")
+    @Value("${app.kafka.topics.reservation-created}")
     private String topic;
 
     private final KafkaTemplate<String, Object> kafkaTemplate;

@@ -1,7 +1,7 @@
 package com.bp.users.api.dto;
 
 public record UserResponse(
-        String id,
+        Long id,
         String email,
         String fullName
 ) {}

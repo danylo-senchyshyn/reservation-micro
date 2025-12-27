@@ -1,12 +1,14 @@
 package com.bp.payments.api;
 
 import com.bp.payments.api.dto.CreatePaymentRequest;
+import com.bp.payments.entity.OutboxEvent;
 import com.bp.payments.entity.Payment;
 import com.bp.payments.entity.PaymentStatus;
 import com.bp.payments.exception.EntityNotFoundException;
-import com.bp.payments.kafka.PaymentProducer;
+import com.bp.payments.repository.OutboxEventRepository;
 import com.bp.payments.repository.PaymentRepository;
 import com.bp.payments.service.PaymentService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,7 +32,10 @@ class PaymentServiceTest {
     private PaymentRepository paymentRepository;
 
     @Mock
-    private PaymentProducer paymentProducer;
+    private OutboxEventRepository outboxEventRepository; // New mock for Outbox
+
+    @Mock
+    private ObjectMapper objectMapper; // New mock for ObjectMapper
 
     @InjectMocks
     private PaymentService paymentService;
@@ -51,8 +56,8 @@ class PaymentServiceTest {
     // ---------- CREATE ----------
 
     @Test
-    void shouldCreatePayment() {
-        CreatePaymentRequest request =
+    void shouldCreatePayment() throws Exception {
+        CreatePaymentRequest request = 
                 new CreatePaymentRequest(10L, BigDecimal.valueOf(100));
 
         when(paymentRepository.save(any(Payment.class)))
@@ -70,32 +75,27 @@ class PaymentServiceTest {
         assertThat(response.amount()).isEqualTo(BigDecimal.valueOf(100));
 
         verify(paymentRepository).save(any(Payment.class));
-        verifyNoInteractions(paymentProducer);
+        verifyNoInteractions(outboxEventRepository); // No outbox event for create directly
     }
 
     // ---------- CONFIRM ----------
 
     @Test
-    void shouldConfirmPayment() {
+    void shouldConfirmPayment() throws Exception {
         when(paymentRepository.findById(1L))
                 .thenReturn(Optional.of(payment));
+        when(objectMapper.writeValueAsString(any())).thenReturn("{\"some\":\"json\"}"); // Mock ObjectMapper behavior
 
         var response = paymentService.confirm(1L);
 
         assertThat(response.status()).isEqualTo(PaymentStatus.CONFIRMED);
         assertThat(payment.getStatus()).isEqualTo(PaymentStatus.CONFIRMED);
 
-        verify(paymentProducer).sendPaymentConfirmedEvent(
-                argThat(event ->
-                        event.paymentId().equals(1L)
-                                && event.reservationId().equals(10L)
-                                && event.status().name().equals("CONFIRMED")
-                )
-        );
+        verify(outboxEventRepository).save(any(OutboxEvent.class));
     }
 
     @Test
-    void shouldBeIdempotentOnConfirm() {
+    void shouldBeIdempotentOnConfirm() throws Exception {
         payment.setStatus(PaymentStatus.CONFIRMED);
 
         when(paymentRepository.findById(1L))
@@ -105,31 +105,26 @@ class PaymentServiceTest {
 
         assertThat(response.status()).isEqualTo(PaymentStatus.CONFIRMED);
 
-        verifyNoInteractions(paymentProducer);
+        verifyNoInteractions(outboxEventRepository); // No outbox event saved on idempotent confirm
     }
 
     // ---------- FAIL ----------
 
     @Test
-    void shouldFailPayment() {
+    void shouldFailPayment() throws Exception {
         when(paymentRepository.findById(1L))
                 .thenReturn(Optional.of(payment));
+        when(objectMapper.writeValueAsString(any())).thenReturn("{\"some\":\"json\"}"); // Mock ObjectMapper behavior
 
         var response = paymentService.fail(1L, "Not enough funds");
 
         assertThat(response.status()).isEqualTo(PaymentStatus.FAILED);
 
-        verify(paymentProducer).sendPaymentFailedEvent(
-                argThat(event ->
-                        event.paymentId().equals(1L)
-                                && event.reservationId().equals(10L)
-                                && event.reason().equals("Not enough funds")
-                )
-        );
+        verify(outboxEventRepository).save(any(OutboxEvent.class));
     }
 
     @Test
-    void shouldBeIdempotentOnFail() {
+    void shouldBeIdempotentOnFail() throws Exception {
         payment.setStatus(PaymentStatus.FAILED);
 
         when(paymentRepository.findById(1L))
@@ -139,13 +134,13 @@ class PaymentServiceTest {
 
         assertThat(response.status()).isEqualTo(PaymentStatus.FAILED);
 
-        verifyNoInteractions(paymentProducer);
+        verifyNoInteractions(outboxEventRepository); // No outbox event saved on idempotent fail
     }
 
     // ---------- NOT FOUND ----------
 
     @Test
-    void shouldThrowIfPaymentNotFound() {
+    void shouldThrowIfPaymentNotFound() throws Exception {
         when(paymentRepository.findById(99L))
                 .thenReturn(Optional.empty());
 
@@ -153,6 +148,6 @@ class PaymentServiceTest {
                 .isInstanceOf(EntityNotFoundException.class)
                 .hasMessageContaining("99");
 
-        verifyNoInteractions(paymentProducer);
+        verifyNoInteractions(outboxEventRepository);
     }
 }

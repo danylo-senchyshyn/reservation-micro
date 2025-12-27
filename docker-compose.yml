@@ -4,6 +4,7 @@ networks:
 
 services:
   zookeeper:
+    container_name: zookeeper
     image: confluentinc/cp-zookeeper:7.3.0
     networks: [backend]
     environment:
@@ -51,6 +52,7 @@ services:
       - ./db_init:/docker-entrypoint-initdb.d
 
   user-service:
+    container_name: user-service
     build:
       context: .
       dockerfile: Dockerfile
@@ -68,6 +70,7 @@ services:
       DB_PASSWORD: postgres
 
   reservation-service:
+    container_name: reservation-service
     build:
       context: .
       dockerfile: Dockerfile
@@ -88,6 +91,7 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
 
   payment-service:
+    container_name: payment-service
     build:
       context: .
       dockerfile: Dockerfile
@@ -108,6 +112,7 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
 
   notification-service:
+    container_name: notification-service
     build:
       context: .
       dockerfile: Dockerfile
@@ -123,6 +128,7 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
 
   gateway-service:
+    container_name: gateway-service
     build:
       context: .
       dockerfile: Dockerfile
