@@ -8,9 +8,9 @@ server:
 app:
   kafka:
     topics:
-      reservation-created: reservations.created.v1
-      payment-confirmed: payments.confirmed.v1
-      payment-failed: payments.failed.v1
+      reservation-created: reservation-service.reservation-created
+      payment-confirmed: payment-service.payment-confirmed
+      payment-failed: payment-service.payment-failed
     dlt-topic:
       reservation-service: reservation.service.dlt
 

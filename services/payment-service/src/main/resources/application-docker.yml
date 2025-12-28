@@ -1,4 +1,6 @@
 spring:
+  main:
+    json.log.enabled: true
   config:
     activate:
       on-profile: docker
@@ -18,16 +20,18 @@ spring:
     consumer:
       group-id: payment-service-group
       auto-offset-reset: earliest
+      max-poll-interval-ms: 300000 # Max time between polls (5 minutes)
+      session-timeout-ms: 45000   # Max time to wait for a heartbeat before rebalancing (45 seconds)
+      heartbeat-interval-ms: 15000 # Frequency of heartbeats to the consumer coordinator (15 seconds)
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
         spring.json.trusted.packages: com.bp.common.events
+        spring.json.use.type.headers: true
 
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
-      properties:
-        spring.json.add.type.headers: false
 
   flyway:
     enabled: false

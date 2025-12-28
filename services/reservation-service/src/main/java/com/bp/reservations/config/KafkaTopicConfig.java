@@ -10,11 +10,11 @@ import org.springframework.kafka.config.TopicBuilder;
 public class KafkaTopicConfig {
 
     @Value("${app.kafka.topics.reservation-created}")
-    private String topic;
+    private String reservationCreatedTopic;
 
     @Bean
     public NewTopic reservationCreatedTopic() {
-        return TopicBuilder.name(topic)
+        return TopicBuilder.name(reservationCreatedTopic)
                 .partitions(1)
                 .replicas(1)
                 .build();

@@ -60,7 +60,7 @@ public class ReservationController {
         return reservationService.updateStatus(id, status);
     }
 
-    // DELETE / CANCEL
+    // DELETE
     @Operation(summary = "Cancel a reservation by ID")
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)

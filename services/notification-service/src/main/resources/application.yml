@@ -2,28 +2,8 @@ spring:
   application:
     name: notification-service
 
-  datasource:
-    url: jdbc:postgresql://postgres:5432/notification_db
-    username: postgres
-    password: postgres
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: true
-    properties:
-      hibernate:
-        format_sql: true
-
 server:
   port: 8084
-
-app:
-  kafka:
-    topics:
-      payment-confirmed: payments.confirmed.v1
-      payment-failed: payments.failed.v1
-    dlt-topic:
-      notification-service: notification.service.dlt
 
 management:
   endpoints:
@@ -33,3 +13,11 @@ management:
   endpoint:
     health:
       show-details: always
+
+app:
+  kafka:
+    topics:
+      payment-confirmed: payment-service.payment-confirmed
+      payment-failed: payment-service.payment-failed
+    dlt-topic:
+      notification-service: notification.service.dlt

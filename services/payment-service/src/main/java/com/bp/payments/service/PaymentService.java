@@ -128,7 +128,7 @@ public class PaymentService {
             OutboxEvent outboxEvent = OutboxEvent.builder()
                     .aggregateType("Payment")
                     .aggregateId(payment.getId())
-                    .eventType(event.getClass().getSimpleName())
+                    .eventType(event.getClass().getName())
                     .payload(objectMapper.writeValueAsString(event))
                     .status(OutboxEventStatus.NEW)
                     .createdAt(LocalDateTime.now())
@@ -153,22 +153,18 @@ public class PaymentService {
     public PaymentResponse fail(Long id, String reason) {
         Payment payment = getPayment(id);
 
+        // 1️⃣ Идемпотентность
         if (payment.getStatus() == PaymentStatus.FAILED) {
-            log.warn(
-                    "Fail skipped: paymentId={} already FAILED",
-                    id
-            );
+            log.warn("Fail skipped: paymentId={} already FAILED", id);
             return toResponse(payment);
         }
 
         if (payment.getStatus() == PaymentStatus.CONFIRMED) {
-            log.warn(
-                    "Fail rejected: paymentId={} already CONFIRMED",
-                    id
-            );
+            log.warn("Fail rejected: paymentId={} already CONFIRMED", id);
             return toResponse(payment);
         }
 
+        // 2️⃣ Основная бизнес-логика
         log.info(
                 "Failing payment: paymentId={}, reservationId={}, reason={}",
                 payment.getId(),
@@ -177,31 +173,44 @@ public class PaymentService {
         );
 
         payment.setStatus(PaymentStatus.FAILED);
+        // ❗ сохранять явно не нужно — JPA flush внутри @Transactional
 
+        // 3️⃣ Формирование доменного события
         PaymentFailedEvent event = new PaymentFailedEvent(
                 payment.getId(),
                 payment.getReservationId(),
                 reason
         );
 
+        // 4️⃣ Outbox (в одной транзакции с Payment)
         try {
             OutboxEvent outboxEvent = OutboxEvent.builder()
                     .aggregateType("Payment")
                     .aggregateId(payment.getId())
-                    .eventType(event.getClass().getSimpleName())
+                    .eventType(event.getClass().getName()) // FQN — правильно
                     .payload(objectMapper.writeValueAsString(event))
                     .status(OutboxEventStatus.NEW)
                     .createdAt(LocalDateTime.now())
                     .build();
+
             outboxEventRepository.save(outboxEvent);
-            log.info("Outbox event saved for paymentId={} (Failed)", payment.getId());
+
+            log.info(
+                    "Outbox event saved: type=PaymentFailedEvent, paymentId={}",
+                    payment.getId()
+            );
         } catch (JsonProcessingException e) {
-            log.error("Failed to serialize PaymentFailedEvent for paymentId={}: {}", payment.getId(), e.getMessage());
-            throw new RuntimeException("Failed to serialize event", e);
+            log.error(
+                    "Failed to serialize PaymentFailedEvent: paymentId={}, error={}",
+                    payment.getId(),
+                    e.getMessage(),
+                    e
+            );
+            throw new IllegalStateException("Failed to serialize PaymentFailedEvent", e);
         }
 
         log.info(
-                "Payment failed and outbox event added: paymentId={}, reservationId={}",
+                "Payment marked as FAILED and outbox event created: paymentId={}, reservationId={}",
                 payment.getId(),
                 payment.getReservationId()
         );
@@ -223,6 +232,12 @@ public class PaymentService {
                 .stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    @Transactional
+    public void deleteAll() {
+        log.warn("Deleting all payments");
+        paymentRepository.deleteAll();
     }
 
     private Payment getPayment(Long id) {

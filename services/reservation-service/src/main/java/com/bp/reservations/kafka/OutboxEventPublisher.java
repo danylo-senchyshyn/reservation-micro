@@ -50,6 +50,8 @@ public class OutboxEventPublisher {
                 outboxEventRepository.save(event);
             } catch (Exception e) {
                 log.error("Failed to publish outbox event for eventId={}: {}", event.getId(), e.getMessage());
+                event.setStatus(OutboxEventStatus.FAILED); // Mark as failed due to an exception during publishing
+                outboxEventRepository.save(event);
             }
         }
     }

@@ -1,12 +1,6 @@
 spring:
   application:
     name: payment-service
-  kafka:
-    consumer:
-      # Common Kafka consumer properties can go here
-      # For example:
-      # properties:
-      #   spring.json.trusted.packages: "*" # Trust all packages for JSON deserialization
 
 server:
   port: 8083
@@ -14,9 +8,9 @@ server:
 app:
   kafka:
     topics:
-      reservation-created: reservations.created.v1
-      payment-confirmed: payments.confirmed.v1
-      payment-failed: payments.failed.v1 # Add payment failed topic
+      reservation-created: reservation-service.reservation-created
+      payment-confirmed: payment-service.payment-confirmed
+      payment-failed: payment-service.payment-failed
     dlt-topic:
       payment-service: payment.service.dlt
   outbox:

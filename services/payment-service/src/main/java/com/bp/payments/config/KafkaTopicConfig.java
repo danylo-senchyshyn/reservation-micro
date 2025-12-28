@@ -12,9 +12,20 @@ public class KafkaTopicConfig {
     @Value("${app.kafka.topics.payment-confirmed}")
     private String paymentConfirmedTopic;
 
+    @Value("${app.kafka.topics.payment-failed}")
+    private String paymentFailedTopic;
+
     @Bean
     public NewTopic paymentConfirmedTopic() {
         return TopicBuilder.name(paymentConfirmedTopic)
+                .partitions(1)
+                .replicas(1)
+                .build();
+    }
+
+    @Bean
+    public NewTopic paymentFailedTopic() {
+        return TopicBuilder.name(paymentFailedTopic)
                 .partitions(1)
                 .replicas(1)
                 .build();

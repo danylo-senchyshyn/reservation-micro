@@ -1,4 +1,6 @@
 spring:
+  main:
+    json.log.enabled: true
   cloud:
     gateway:
       routes:

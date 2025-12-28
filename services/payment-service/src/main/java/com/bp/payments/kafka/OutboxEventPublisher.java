@@ -40,16 +40,16 @@ public class OutboxEventPublisher {
         for (OutboxEvent event : newEvents) {
             try {
                 // Deserialize the payload to the correct event type
-                Object kafkaEvent;
-                if (event.getEventType().equals("PaymentConfirmedEvent")) {
-                    kafkaEvent = objectMapper.readValue(event.getPayload(), PaymentConfirmedEvent.class);
+                Class<?> eventClass = Class.forName(event.getEventType());
+                Object kafkaEvent = objectMapper.readValue(event.getPayload(), eventClass);
+
+                if (kafkaEvent instanceof PaymentConfirmedEvent) {
                     paymentProducer.sendPaymentConfirmedEvent((PaymentConfirmedEvent) kafkaEvent);
-                } else if (event.getEventType().equals("PaymentFailedEvent")) {
-                    kafkaEvent = objectMapper.readValue(event.getPayload(), PaymentFailedEvent.class);
+                } else if (kafkaEvent instanceof PaymentFailedEvent) {
                     paymentProducer.sendPaymentFailedEvent((PaymentFailedEvent) kafkaEvent);
                 } else {
-                    log.error("Unknown event type {} for outbox event id {}", event.getEventType(), event.getId());
-                    event.setStatus(OutboxEventStatus.FAILED); // Mark as failed due to unknown type
+                    log.error("Unsupported event type {} for outbox event id {}", event.getEventType(), event.getId());
+                    event.setStatus(OutboxEventStatus.FAILED); // Mark as failed due to unsupported type
                     outboxEventRepository.save(event);
                     continue;
                 }
@@ -57,14 +57,14 @@ public class OutboxEventPublisher {
                 event.setStatus(OutboxEventStatus.SENT);
                 outboxEventRepository.save(event);
                 log.info("Published outbox event for paymentId={} (eventId={})", event.getAggregateId(), event.getId());
-            } catch (JsonProcessingException e) {
-                log.error("Failed to deserialize outbox event payload for eventId={}: {}", event.getId(), e.getMessage());
-                event.setStatus(OutboxEventStatus.FAILED); // Mark as failed due to serialization error
+            } catch (JsonProcessingException | ClassNotFoundException e) {
+                log.error("Failed to deserialize or find class for outbox event payload for eventId={}: {}", event.getId(), e.getMessage());
+                event.setStatus(OutboxEventStatus.FAILED); // Mark as failed due to serialization/class error
                 outboxEventRepository.save(event);
             } catch (Exception e) { // Catch any other exceptions during Kafka sending
                 log.error("Failed to publish outbox event for eventId={}: {}", event.getId(), e.getMessage());
-                // Depending on policy, might retry or mark as FAILED
-                // For now, simply log and let it potentially be retried by the next schedule if not marked FAILED.
+                event.setStatus(OutboxEventStatus.FAILED); // Mark as failed due to an exception during publishing
+                outboxEventRepository.save(event);
             }
         }
     }

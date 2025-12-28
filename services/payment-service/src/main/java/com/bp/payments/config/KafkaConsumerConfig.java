@@ -22,7 +22,8 @@ public class KafkaConsumerConfig {
     @Bean
     public ConcurrentKafkaListenerContainerFactory<String, Object> kafkaListenerContainerFactory(
             ConsumerFactory<String, Object> consumerFactory,
-            KafkaTemplate<String, Object> kafkaTemplate) {
+            KafkaTemplate<String, Object> kafkaTemplate
+    ) {
         ConcurrentKafkaListenerContainerFactory<String, Object> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory);
 
@@ -30,10 +31,6 @@ public class KafkaConsumerConfig {
                 (r, e) -> new TopicPartition(dltTopic, r.partition()));
 
         DefaultErrorHandler errorHandler = new DefaultErrorHandler(recoverer, new FixedBackOff(1000L, 3L));
-        // No need for custom DLT callback if using DeadLetterPublishingRecoverer in constructor
-        // errorHandler.setAckAfterHandle(false); // Default is true if recoverer is set
-        // errorHandler.setSeekToCurrentAfter(0); // This is deprecated/removed in newer versions
-
         factory.setCommonErrorHandler(errorHandler);
 
         return factory;
