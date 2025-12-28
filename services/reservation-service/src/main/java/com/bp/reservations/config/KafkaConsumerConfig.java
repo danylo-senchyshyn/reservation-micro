@@ -12,6 +12,9 @@ import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.util.backoff.FixedBackOff;
 
+/**
+ * The type Kafka consumer config.
+ */
 @EnableKafka
 @Configuration
 public class KafkaConsumerConfig {
@@ -19,6 +22,13 @@ public class KafkaConsumerConfig {
     @Value("${app.kafka.dlt-topic.reservation-service}")
     private String dltTopic;
 
+    /**
+     * Kafka listener container factory concurrent kafka listener container factory.
+     *
+     * @param consumerFactory the consumer factory
+     * @param kafkaTemplate   the kafka template
+     * @return the concurrent kafka listener container factory
+     */
     @Bean
     public ConcurrentKafkaListenerContainerFactory<String, Object> kafkaListenerContainerFactory(
             ConsumerFactory<String, Object> consumerFactory,

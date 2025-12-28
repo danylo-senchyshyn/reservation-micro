@@ -6,6 +6,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.TopicBuilder;
 
+/**
+ * The type Kafka topic config.
+ */
 @Configuration
 public class KafkaTopicConfig {
 
@@ -15,6 +18,11 @@ public class KafkaTopicConfig {
     @Value("${app.kafka.topics.payment-failed}")
     private String paymentFailedTopic;
 
+    /**
+     * Payment confirmed topic new topic.
+     *
+     * @return the new topic
+     */
     @Bean
     public NewTopic paymentConfirmedTopic() {
         return TopicBuilder.name(paymentConfirmedTopic)
@@ -23,6 +31,11 @@ public class KafkaTopicConfig {
                 .build();
     }
 
+    /**
+     * Payment failed topic new topic.
+     *
+     * @return the new topic
+     */
     @Bean
     public NewTopic paymentFailedTopic() {
         return TopicBuilder.name(paymentFailedTopic)

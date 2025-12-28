@@ -9,6 +9,9 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+/**
+ * The type Payment.
+ */
 @Data @Entity @Builder
 @Table(name = "payments")
 @NoArgsConstructor @AllArgsConstructor

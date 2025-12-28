@@ -8,6 +8,9 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
+/**
+ * The type Outbox event.
+ */
 @Entity
 @Data
 @NoArgsConstructor

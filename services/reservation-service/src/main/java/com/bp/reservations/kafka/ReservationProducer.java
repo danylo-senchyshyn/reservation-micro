@@ -7,6 +7,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
+/**
+ * The type Reservation producer.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -17,6 +20,11 @@ public class ReservationProducer {
 
     private final KafkaTemplate<String, Object> kafkaTemplate;
 
+    /**
+     * Send reservation created event.
+     *
+     * @param event the event
+     */
     public void sendReservationCreatedEvent(ReservationCreatedEvent event) {
         log.info("Sending reservation created event: {}", event);
         kafkaTemplate.send(topic, String.valueOf(event.reservationId()), event);

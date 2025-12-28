@@ -7,6 +7,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
+/**
+ * The type Payment failed listener.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -14,6 +17,11 @@ public class PaymentFailedListener {
 
     private final NotificationService notificationService;
 
+    /**
+     * On payment failed.
+     *
+     * @param event the event
+     */
     @KafkaListener(
             topics = "${app.kafka.topics.payment-failed}",
             groupId = "notification-service-group",

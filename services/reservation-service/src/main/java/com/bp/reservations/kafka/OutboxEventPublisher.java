@@ -14,6 +14,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+/**
+ * The type Outbox event publisher.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -23,6 +26,9 @@ public class OutboxEventPublisher {
     private final ReservationProducer reservationProducer;
     private final ObjectMapper objectMapper;
 
+    /**
+     * Publish outbox events.
+     */
     @Scheduled(fixedRateString = "${app.outbox.scheduler-fixed-rate}")
     @Transactional
     public void publishOutboxEvents() {

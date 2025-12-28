@@ -23,6 +23,9 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * The type Payment service.
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -32,6 +35,11 @@ public class PaymentService {
     private final OutboxEventRepository outboxEventRepository;
     private final ObjectMapper objectMapper;
 
+    /**
+     * Process payment.
+     *
+     * @param event the event
+     */
     @Transactional
     public void processPayment(ReservationCreatedEvent event) {
         log.info(
@@ -65,6 +73,12 @@ public class PaymentService {
         );
     }
 
+    /**
+     * Create payment response.
+     *
+     * @param request the request
+     * @return the payment response
+     */
     @Transactional
     public PaymentResponse create(CreatePaymentRequest request) {
         log.info(
@@ -97,6 +111,12 @@ public class PaymentService {
         return toResponse(payment);
     }
 
+    /**
+     * Confirm payment response.
+     *
+     * @param id the id
+     * @return the payment response
+     */
     @Transactional
     public PaymentResponse confirm(Long id) {
         Payment payment = getPayment(id);
@@ -149,6 +169,13 @@ public class PaymentService {
         return toResponse(payment);
     }
 
+    /**
+     * Fail payment response.
+     *
+     * @param id     the id
+     * @param reason the reason
+     * @return the payment response
+     */
     @Transactional
     public PaymentResponse fail(Long id, String reason) {
         Payment payment = getPayment(id);
@@ -218,12 +245,24 @@ public class PaymentService {
         return toResponse(payment);
     }
 
+    /**
+     * Gets by id.
+     *
+     * @param id the id
+     * @return the by id
+     */
     @Transactional(readOnly = true)
     public PaymentResponse getById(Long id) {
         log.debug("Fetching payment by id={}", id);
         return toResponse(getPayment(id));
     }
 
+    /**
+     * Gets by reservation id.
+     *
+     * @param reservationId the reservation id
+     * @return the by reservation id
+     */
     @Transactional(readOnly = true)
     public List<PaymentResponse> getByReservationId(Long reservationId) {
         log.debug("Fetching payments by reservationId={}", reservationId);
@@ -234,6 +273,9 @@ public class PaymentService {
                 .toList();
     }
 
+    /**
+     * Delete all.
+     */
     @Transactional
     public void deleteAll() {
         log.warn("Deleting all payments");

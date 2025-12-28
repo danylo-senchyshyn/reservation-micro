@@ -5,6 +5,9 @@ import jakarta.validation.constraints.NotNull;
 
 import java.time.LocalDateTime;
 
+/**
+ * The type Create reservation request.
+ */
 public record CreateReservationRequest(
         @NotNull Long userId,
         @NotNull Long resourceId,

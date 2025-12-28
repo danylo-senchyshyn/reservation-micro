@@ -13,6 +13,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * The type Reservation controller.
+ */
 @Tag(name = "Reservation Management", description = "Operations related to booking reservations")
 @RestController
 @RequestMapping("/api/reservations")
@@ -21,7 +24,13 @@ public class ReservationController {
 
     private final ReservationService reservationService;
 
-    // CREATE
+    /**
+     * Create reservation response.
+     *
+     * @param request the request
+     * @return the reservation response
+     */
+// CREATE
     @Operation(summary = "Create a new reservation")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -31,26 +40,50 @@ public class ReservationController {
         return reservationService.createReservation(request);
     }
 
-    // READ
+    /**
+     * Gets by id.
+     *
+     * @param id the id
+     * @return the by id
+     */
+// READ
     @Operation(summary = "Get reservation by ID")
     @GetMapping("/{id}")
     public ReservationResponse getById(@PathVariable Long id) {
         return reservationService.getById(id);
     }
 
+    /**
+     * Gets all.
+     *
+     * @return the all
+     */
     @Operation(summary = "Get all reservations")
     @GetMapping
     public List<ReservationResponse> getAll() {
         return reservationService.getAll();
     }
 
+    /**
+     * Gets by user.
+     *
+     * @param userId the user id
+     * @return the by user
+     */
     @Operation(summary = "Get reservations by User ID")
     @GetMapping("/user/{userId}")
     public List<ReservationResponse> getByUser(@PathVariable Long userId) {
         return reservationService.getByUserId(userId);
     }
 
-    // UPDATE
+    /**
+     * Update status reservation response.
+     *
+     * @param id     the id
+     * @param status the status
+     * @return the reservation response
+     */
+// UPDATE
     @Operation(summary = "Update reservation status by ID")
     @PatchMapping("/{id}/status")
     public ReservationResponse updateStatus(
@@ -60,7 +93,12 @@ public class ReservationController {
         return reservationService.updateStatus(id, status);
     }
 
-    // DELETE
+    /**
+     * Cancel.
+     *
+     * @param id the id
+     */
+// DELETE
     @Operation(summary = "Cancel a reservation by ID")
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -68,6 +106,9 @@ public class ReservationController {
         reservationService.cancel(id);
     }
 
+    /**
+     * Cancel all.
+     */
     @Operation(summary = "Cancel all reservations (for admin/testing)")
     @DeleteMapping
     @ResponseStatus(HttpStatus.NO_CONTENT)

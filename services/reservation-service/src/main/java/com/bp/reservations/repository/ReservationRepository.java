@@ -7,7 +7,13 @@ import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
 
+/**
+ * The interface Reservation repository.
+ */
 public interface ReservationRepository extends JpaRepository<Reservation, Long> {
+    /**
+     * Cancel all active.
+     */
     @Modifying
     @Query("""
                 update Reservation r
@@ -16,5 +22,11 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             """)
     void cancelAllActive();
 
+    /**
+     * Find by user id list.
+     *
+     * @param userId the user id
+     * @return the list
+     */
     List<Reservation> findByUserId(Long userId);
 }

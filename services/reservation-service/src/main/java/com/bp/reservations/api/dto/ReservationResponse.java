@@ -4,6 +4,9 @@ import com.bp.reservations.entity.ReservationStatus;
 
 import java.time.LocalDateTime;
 
+/**
+ * The type Reservation response.
+ */
 public record ReservationResponse(
         Long id,
         Long userId,

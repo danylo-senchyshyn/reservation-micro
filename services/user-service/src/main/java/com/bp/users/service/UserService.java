@@ -12,6 +12,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+/**
+ * The type User service.
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -19,6 +22,12 @@ public class UserService {
 
     private final UserRepository userRepository;
 
+    /**
+     * Create user user response.
+     *
+     * @param request the request
+     * @return the user response
+     */
     @Transactional
     public UserResponse createUser(CreateUserRequest request) {
         log.info("Creating user with email={}", request.email());
@@ -43,6 +52,12 @@ public class UserService {
         return toResponse(savedUser);
     }
 
+    /**
+     * Gets user by id.
+     *
+     * @param id the id
+     * @return the user by id
+     */
     @Transactional(readOnly = true)
     public UserResponse getUserById(Long id) {
         log.debug("Fetching user by id={}", id);
@@ -58,6 +73,11 @@ public class UserService {
                 });
     }
 
+    /**
+     * Gets all users.
+     *
+     * @return the all users
+     */
     @Transactional(readOnly = true)
     public List<UserResponse> getAllUsers() {
         log.debug("Fetching all users");
@@ -70,6 +90,11 @@ public class UserService {
         return users;
     }
 
+    /**
+     * Delete user.
+     *
+     * @param id the id
+     */
     @Transactional
     public void deleteUser(Long id) {
         log.info("Deleting user with id={}", id);
@@ -83,6 +108,9 @@ public class UserService {
         log.info("User deleted successfully. id={}", id);
     }
 
+    /**
+     * Delete all users.
+     */
     @Transactional
     public void deleteAllUsers() {
         log.warn("Deleting ALL users (dangerous operation)");

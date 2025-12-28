@@ -1,0 +1,29 @@
+@startuml
+entity "Reservation" {
+    + id: UUID <<PK>>
+    --
+    userId: UUID <<FK>>
+    resourceId: UUID <<FK>>
+    amount: DECIMAL(10,2)
+    status: VARCHAR(20) (e.g., PENDING, CONFIRMED, FAILED, CANCELLED)
+    bookingDate: TIMESTAMP
+    startDate: TIMESTAMP
+    endDate: TIMESTAMP
+    createdAt: TIMESTAMP
+    updatedAt: TIMESTAMP
+}
+
+entity "OutboxEvent" {
+    + id: UUID <<PK>>
+    --
+    aggregateType: VARCHAR(255)
+    aggregateId: UUID
+    eventType: VARCHAR(255)
+    payload: JSONB
+    timestamp: TIMESTAMP
+    status: VARCHAR(20) (e.g., PENDING, PUBLISHED)
+    traceId: VARCHAR(255) (Optional, for distributed tracing)
+}
+
+Reservation "1" -- "1" OutboxEvent : Creates OutboxEvent (ReservationCreated)
+@enduml

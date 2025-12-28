@@ -8,6 +8,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
+/**
+ * The type Payment producer.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -21,6 +24,11 @@ public class PaymentProducer {
 
     private final KafkaTemplate<String, Object> kafkaTemplate;
 
+    /**
+     * Send payment confirmed event.
+     *
+     * @param event the event
+     */
     public void sendPaymentConfirmedEvent(PaymentConfirmedEvent event) {
         log.info(
                 "Sending PaymentConfirmedEvent: paymentId={}, reservationId={}, status={}",
@@ -32,6 +40,11 @@ public class PaymentProducer {
         kafkaTemplate.send(paymentConfirmedTopic, event);
     }
 
+    /**
+     * Send payment failed event.
+     *
+     * @param event the event
+     */
     public void sendPaymentFailedEvent(PaymentFailedEvent event) {
         log.warn(
                 "Sending PaymentFailedEvent: paymentId={}, reservationId={}, reason={}",

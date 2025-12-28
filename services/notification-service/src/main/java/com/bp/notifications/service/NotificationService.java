@@ -12,6 +12,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
+/**
+ * The type Notification service.
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -19,6 +22,11 @@ public class NotificationService {
 
     private final NotificationLogRepository notificationLogRepository;
 
+    /**
+     * Process payment confirmation.
+     *
+     * @param event the event
+     */
     @Transactional
     public void processPaymentConfirmation(PaymentConfirmedEvent event) {
         String eventType = event.getClass().getSimpleName();
@@ -43,6 +51,11 @@ public class NotificationService {
         }
     }
 
+    /**
+     * Process payment failure.
+     *
+     * @param event the event
+     */
     @Transactional
     public void processPaymentFailure(PaymentFailedEvent event) {
         String eventType = event.getClass().getSimpleName();

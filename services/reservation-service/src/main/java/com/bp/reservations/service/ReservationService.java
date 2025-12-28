@@ -19,6 +19,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * The type Reservation service.
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -28,6 +31,12 @@ public class ReservationService {
     private final OutboxEventRepository outboxEventRepository;
     private final ObjectMapper objectMapper;
 
+    /**
+     * Create reservation reservation response.
+     *
+     * @param request the request
+     * @return the reservation response
+     */
     @Transactional
     public ReservationResponse createReservation(CreateReservationRequest request) {
         log.info(
@@ -90,6 +99,12 @@ public class ReservationService {
         return toResponse(reservation);
     }
 
+    /**
+     * Gets by id.
+     *
+     * @param id the id
+     * @return the by id
+     */
     @Transactional(readOnly = true)
     public ReservationResponse getById(Long id) {
         Reservation reservation = reservationRepository.findById(id)
@@ -102,6 +117,11 @@ public class ReservationService {
         return toResponse(reservation);
     }
 
+    /**
+     * Gets all.
+     *
+     * @return the all
+     */
     @Transactional(readOnly = true)
     public List<ReservationResponse> getAll() {
         return reservationRepository.findAll().stream()
@@ -109,6 +129,12 @@ public class ReservationService {
                 .toList();
     }
 
+    /**
+     * Update reservation status.
+     *
+     * @param reservationId the reservation id
+     * @param paymentStatus the payment status
+     */
     @Transactional
     public void updateReservationStatus(Long reservationId, com.bp.common.events.PaymentStatus paymentStatus) {
         log.info(
@@ -152,6 +178,12 @@ public class ReservationService {
         reservation.setStatus(newStatus);
     }
 
+    /**
+     * Gets by user id.
+     *
+     * @param userId the user id
+     * @return the by user id
+     */
     @Transactional(readOnly = true)
     public List<ReservationResponse> getByUserId(Long userId) {
         return reservationRepository.findByUserId(userId)
@@ -160,6 +192,13 @@ public class ReservationService {
                 .toList();
     }
 
+    /**
+     * Update status reservation response.
+     *
+     * @param id        the id
+     * @param newStatus the new status
+     * @return the reservation response
+     */
     @Transactional
     public ReservationResponse updateStatus(Long id, ReservationStatus newStatus) {
         Reservation reservation = reservationRepository.findById(id)
@@ -189,6 +228,11 @@ public class ReservationService {
         return toResponse(reservation);
     }
 
+    /**
+     * Cancel.
+     *
+     * @param id the id
+     */
     @Transactional
     public void cancel(Long id) {
         Reservation reservation = reservationRepository.findById(id)
@@ -207,6 +251,9 @@ public class ReservationService {
         reservation.setStatus(ReservationStatus.CANCELLED);
     }
 
+    /**
+     * Cancel all.
+     */
     @Transactional
     public void cancelAll() {
         log.warn("Cancelling ALL reservations");

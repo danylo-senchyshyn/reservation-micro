@@ -1,0 +1,28 @@
+@startuml
+entity "Payment" {
+    + id: UUID <<PK>>
+    --
+    reservationId: UUID <<FK>>
+    amount: DECIMAL(10,2)
+    currency: VARCHAR(3)
+    status: VARCHAR(20) (e.g., PENDING, COMPLETED, FAILED)
+    transactionId: VARCHAR(255) <<Unique>> (External payment gateway reference)
+    paymentDate: TIMESTAMP
+    createdAt: TIMESTAMP
+    updatedAt: TIMESTAMP
+}
+
+entity "OutboxEvent" {
+    + id: UUID <<PK>>
+    --
+    aggregateType: VARCHAR(255)
+    aggregateId: UUID
+    eventType: VARCHAR(255)
+    payload: JSONB
+    timestamp: TIMESTAMP
+    status: VARCHAR(20) (e.g., PENDING, PUBLISHED)
+    traceId: VARCHAR(255) (Optional, for distributed tracing)
+}
+
+Payment "1" -- "1" OutboxEvent : Creates OutboxEvent (e.g., PaymentConfirmed/Failed)
+@enduml

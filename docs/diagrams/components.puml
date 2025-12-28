@@ -1,0 +1,44 @@
+@startuml components
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+LAYOUT_WITH_LEGEND()
+
+Boundary(SystemBoundary, "Reservation System") {
+
+    Container(Client, "Client Application", "Web Browser, Mobile App, CLI Tool", "Users interact with the system through various client applications.")
+    Container(Gateway, "API Gateway", "Spring Cloud Gateway", "Routes API requests to appropriate microservices, provides common cross-cutting concerns (e.g., authentication, rate limiting).")
+    Container(ReservationService, "Reservation Service", "Spring Boot Application", "Manages reservation lifecycle, publishes ReservationCreatedEvent, consumes PaymentConfirmed/Failed events to update reservation status.")
+    Container(PaymentService, "Payment Service", "Spring Boot Application", "Handles payment processing, consumes ReservationCreatedEvent, publishes PaymentConfirmedEvent or PaymentFailedEvent.")
+    Container(NotificationService, "Notification Service", "Spring Boot Application", "Sends notifications to users (e.g., email, SMS) based on events.")
+    Container(UserService, "User Service", "Spring Boot Application", "Manages user accounts and profiles.")
+
+    ContainerDb(ReservationDB, "Reservation Database", "PostgreSQL", "Persists reservation data, includes an Outbox table for event publishing.")
+    ContainerDb(PaymentDB, "Payment Database", "PostgreSQL", "Stores payment transaction details, includes an Outbox table for event publishing.")
+    ContainerDb(NotificationDB, "Notification Database", "PostgreSQL", "Stores notification logs.")
+    ContainerDb(UserDB, "User Database", "PostgreSQL", "Stores user data.")
+
+    ContainerQueue(Kafka, "Apache Kafka", "Distributed Streaming Platform", "Asynchronous message broker for inter-service communication and event streaming.")
+
+    Rel(Client, Gateway, "Sends API requests to")
+    Rel(Gateway, ReservationService, "Routes reservation requests to")
+    Rel(Gateway, PaymentService, "Routes payment requests to")
+    Rel(Gateway, UserService, "Routes user requests to")
+
+    Rel(ReservationService, ReservationDB, "Reads from and writes to", "JDBC")
+    Rel(PaymentService, PaymentDB, "Reads from and writes to", "JDBC")
+    Rel(NotificationService, NotificationDB, "Reads from and writes to", "JDBC")
+    Rel(UserService, UserDB, "Reads from and writes to", "JDBC")
+
+    Rel(ReservationService, Kafka, "Publishes ReservationCreatedEvent to", "reservation-created-events topic")
+    Rel(PaymentService, Kafka, "Consumes ReservationCreatedEvent from", "reservation-created-events topic")
+    Rel(PaymentService, Kafka, "Publishes PaymentConfirmedEvent to", "payment-confirmed-events topic")
+    Rel(PaymentService, Kafka, "Publishes PaymentFailedEvent to", "payment-failed-events topic")
+    Rel(NotificationService, Kafka, "Consumes PaymentConfirmedEvent from", "payment-confirmed-events topic")
+    Rel(NotificationService, Kafka, "Consumes PaymentFailedEvent from", "payment-failed-events topic")
+    Rel(ReservationService, Kafka, "Consumes PaymentConfirmedEvent from", "payment-confirmed-events topic")
+    Rel(ReservationService, Kafka, "Consumes PaymentFailedEvent from", "payment-failed-events topic")
+
+    Rel_L(Kafka, Kafka, "Requires", "Zookeeper (implied)")
+}
+
+@enduml

@@ -1,0 +1,60 @@
+@startuml sequence
+autonumber
+actor Client
+boundary Gateway
+participant "Reservation Service" as Reservation
+queue "Kafka Topic: reservation-created-events" as KafkaReservation
+participant "Payment Service" as Payment
+queue "Kafka Topic: payment-confirmed-events" as KafkaPaymentConfirmed
+queue "Kafka Topic: payment-failed-events" as KafkaPaymentFailed
+participant "Notification Service" as Notification
+
+Client -> Gateway: POST /reservations (CreateReservationRequest)
+activate Gateway
+Gateway -> Reservation: Create Reservation Request
+activate Reservation
+Reservation -> Reservation: Save Reservation (status: PENDING)
+Reservation -> Reservation: Record ReservationCreatedEvent in Outbox
+Reservation --> Gateway: Reservation Created Response (ACK)
+deactivate Reservation
+Gateway --> Client: Reservation Created Response
+deactivate Gateway
+
+Reservation -> KafkaReservation: Publish ReservationCreatedEvent (via Outbox)
+activate KafkaReservation
+
+KafkaReservation -> Payment: Consume ReservationCreatedEvent
+activate Payment
+Payment -> Payment: Process Payment (e.g., external API call)
+alt Payment Successful
+    Payment -> Payment: Save Payment Record (status: COMPLETED)
+    Payment -> Payment: Record PaymentConfirmedEvent in Outbox
+    Payment -> KafkaPaymentConfirmed: Publish PaymentConfirmedEvent (via Outbox)
+    activate KafkaPaymentConfirmed
+    KafkaPaymentConfirmed -> Notification: Consume PaymentConfirmedEvent
+    activate Notification
+    Notification -> Notification: Send "Payment Confirmed" Notification
+    deactivate Notification
+    KafkaPaymentConfirmed -> Reservation: Consume PaymentConfirmedEvent
+    activate Reservation
+    Reservation -> Reservation: Update Reservation Status (CONFIRMED)
+    deactivate Reservation
+    deactivate KafkaPaymentConfirmed
+else Payment Failed
+    Payment -> Payment: Save Payment Record (status: FAILED)
+    Payment -> Payment: Record PaymentFailedEvent in Outbox
+    Payment -> KafkaPaymentFailed: Publish PaymentFailedEvent (via Outbox)
+    activate KafkaPaymentFailed
+    KafkaPaymentFailed -> Notification: Consume PaymentFailedEvent
+    activate Notification
+    Notification -> Notification: Send "Payment Failed" Notification
+    deactivate Notification
+    KafkaPaymentFailed -> Reservation: Consume PaymentFailedEvent
+    activate Reservation
+    Reservation -> Reservation: Update Reservation Status (FAILED)
+    deactivate Reservation
+    deactivate KafkaPaymentFailed
+end
+deactivate Payment
+deactivate KafkaReservation
+@enduml

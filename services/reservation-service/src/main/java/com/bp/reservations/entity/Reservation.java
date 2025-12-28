@@ -8,6 +8,9 @@ import lombok.NoArgsConstructor;
 import java.time.Instant;
 import java.time.LocalDateTime;
 
+/**
+ * The type Reservation.
+ */
 @Entity @Data @Builder
 @Table(name = "reservations")
 @NoArgsConstructor @AllArgsConstructor
