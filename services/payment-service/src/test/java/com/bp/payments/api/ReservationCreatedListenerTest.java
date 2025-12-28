@@ -12,6 +12,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.LocalDateTime;
 
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @ExtendWith(MockitoExtension.class)
 class ReservationCreatedListenerTest {
@@ -34,7 +35,7 @@ class ReservationCreatedListenerTest {
 
         listener.onReservationCreated(event);
 
-        verify(paymentService)
-                .processPayment(event);
+        verify(paymentService).processPayment(event);
+        verifyNoMoreInteractions(paymentService);
     }
 }

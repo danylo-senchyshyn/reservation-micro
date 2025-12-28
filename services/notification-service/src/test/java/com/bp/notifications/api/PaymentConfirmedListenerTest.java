@@ -11,6 +11,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @ExtendWith(MockitoExtension.class)
 class PaymentConfirmedListenerTest {
@@ -23,15 +24,18 @@ class PaymentConfirmedListenerTest {
 
     @Test
     void shouldDelegateEventToService() {
+        // given
         var event = new PaymentConfirmedEvent(
                 1L,
                 10L,
                 PaymentStatus.CONFIRMED
         );
 
+        // when
         listener.onPaymentConfirmed(event);
 
-        verify(notificationService)
-                .processPaymentConfirmation(event);
+        // then
+        verify(notificationService).processPaymentConfirmation(event);
+        verifyNoMoreInteractions(notificationService);
     }
 }

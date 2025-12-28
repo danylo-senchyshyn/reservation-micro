@@ -23,37 +23,77 @@ class NotificationServiceTest {
     @InjectMocks
     private NotificationService service;
 
+    // ---------- CONFIRMED ----------
+
     @Test
-    void shouldSendNotificationOnce() {
-        when(repository.existsByPaymentIdAndEventType(1L, "PaymentConfirmedEvent"))
-                .thenReturn(false);
+    void shouldSendNotificationOnce_forPaymentConfirmed() {
+        when(repository.existsByPaymentIdAndEventType(
+                1L,
+                "PaymentConfirmedEvent"
+        )).thenReturn(false);
 
         service.processPaymentConfirmation(
-                new PaymentConfirmedEvent(1L, 10L, PaymentStatus.CONFIRMED)
+                new PaymentConfirmedEvent(
+                        1L,
+                        10L,
+                        PaymentStatus.CONFIRMED
+                )
         );
 
         verify(repository).save(any(NotificationLog.class));
     }
 
     @Test
-    void shouldBeIdempotentForPaymentConfirmed() {
-        when(repository.existsByPaymentIdAndEventType(1L, "PaymentConfirmedEvent"))
-                .thenReturn(true);
+    void shouldBeIdempotent_forPaymentConfirmed() {
+        when(repository.existsByPaymentIdAndEventType(
+                1L,
+                "PaymentConfirmedEvent"
+        )).thenReturn(true);
 
         service.processPaymentConfirmation(
-                new PaymentConfirmedEvent(1L, 10L, PaymentStatus.CONFIRMED)
+                new PaymentConfirmedEvent(
+                        1L,
+                        10L,
+                        PaymentStatus.CONFIRMED
+                )
         );
 
         verify(repository, never()).save(any());
     }
 
+    // ---------- FAILED ----------
+
     @Test
-    void shouldBeIdempotentForPaymentFailed() {
-        when(repository.existsByPaymentIdAndEventType(1L, "PaymentFailedEvent"))
-                .thenReturn(true);
+    void shouldSendNotificationOnce_forPaymentFailed() {
+        when(repository.existsByPaymentIdAndEventType(
+                1L,
+                "PaymentFailedEvent"
+        )).thenReturn(false);
 
         service.processPaymentFailure(
-                new PaymentFailedEvent(1L, 10L, "Not enough funds")
+                new PaymentFailedEvent(
+                        1L,
+                        10L,
+                        "Not enough funds"
+                )
+        );
+
+        verify(repository).save(any(NotificationLog.class));
+    }
+
+    @Test
+    void shouldBeIdempotent_forPaymentFailed() {
+        when(repository.existsByPaymentIdAndEventType(
+                1L,
+                "PaymentFailedEvent"
+        )).thenReturn(true);
+
+        service.processPaymentFailure(
+                new PaymentFailedEvent(
+                        1L,
+                        10L,
+                        "Not enough funds"
+                )
         );
 
         verify(repository, never()).save(any());

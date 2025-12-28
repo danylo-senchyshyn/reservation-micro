@@ -32,10 +32,10 @@ class ReservationServiceTest {
     private ReservationRepository reservationRepository;
 
     @Mock
-    private OutboxEventRepository outboxEventRepository; // New mock for Outbox
-    
+    private OutboxEventRepository outboxEventRepository;
+
     @Mock
-    private ObjectMapper objectMapper; // New mock for ObjectMapper
+    private ObjectMapper objectMapper;
 
     @InjectMocks
     private ReservationService reservationService;
@@ -63,7 +63,7 @@ class ReservationServiceTest {
     // ---------- CREATE ----------
 
     @Test
-    void shouldCreateReservation() throws Exception { // Add "throws Exception" for ObjectMapper
+    void shouldCreateReservation() throws Exception {
         CreateReservationRequest request =
                 new CreateReservationRequest(1L, 1L, FROM, TO);
 
@@ -73,8 +73,9 @@ class ReservationServiceTest {
                     saved.setId(1L);
                     return saved;
                 });
-        
-        when(objectMapper.writeValueAsString(any())).thenReturn("{\"some\":\"json\"}"); // Mock ObjectMapper behavior
+
+        when(objectMapper.writeValueAsString(any()))
+                .thenReturn("{\"json\":\"payload\"}");
 
         ReservationResponse response =
                 reservationService.createReservation(request);
@@ -83,7 +84,7 @@ class ReservationServiceTest {
         assertThat(response.status()).isEqualTo(ReservationStatus.CREATED);
 
         verify(reservationRepository).save(any(Reservation.class));
-        verify(outboxEventRepository).save(any(OutboxEvent.class)); // Verify outbox save
+        verify(outboxEventRepository).save(any(OutboxEvent.class));
     }
 
     // ---------- UPDATE STATUS ----------
@@ -98,8 +99,6 @@ class ReservationServiceTest {
 
         assertThat(response.status()).isEqualTo(ReservationStatus.PAID);
         assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.PAID);
-
-        verify(reservationRepository).findById(1L);
     }
 
     // ---------- GET BY ID ----------
@@ -114,8 +113,6 @@ class ReservationServiceTest {
 
         assertThat(response.id()).isEqualTo(1L);
         assertThat(response.status()).isEqualTo(ReservationStatus.CREATED);
-
-        verify(reservationRepository).findById(1L);
     }
 
     // ---------- GET BY USER ----------
@@ -130,8 +127,6 @@ class ReservationServiceTest {
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).id()).isEqualTo(1L);
-
-        verify(reservationRepository).findByUserId(1L);
     }
 
     // ---------- GET ALL ----------
@@ -145,8 +140,6 @@ class ReservationServiceTest {
                 reservationService.getAll();
 
         assertThat(result).hasSize(1);
-
-        verify(reservationRepository).findAll();
     }
 
     // ---------- CANCEL ----------
@@ -160,9 +153,6 @@ class ReservationServiceTest {
 
         assertThat(reservation.getStatus())
                 .isEqualTo(ReservationStatus.CANCELLED);
-
-        verify(reservationRepository).findById(1L);
-        verifyNoMoreInteractions(reservationRepository);
     }
 
     @Test

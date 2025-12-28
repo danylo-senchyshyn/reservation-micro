@@ -28,7 +28,7 @@ class ReservationPaymentListenerTest {
         var event = new PaymentConfirmedEvent(
                 1L,
                 10L,
-                com.bp.common.events.PaymentStatus.CONFIRMED
+                PaymentStatus.CONFIRMED
         );
 
         listener.onPaymentConfirmed(event);

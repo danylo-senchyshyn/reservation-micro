@@ -41,7 +41,7 @@ class ReservationOutboxPublisherTest {
                 .id(1L)
                 .aggregateType("Reservation")
                 .aggregateId(10L)
-                .eventType("ReservationCreatedEvent")
+                .eventType(ReservationCreatedEvent.class.getName())
                 .payload("{json}")
                 .status(OutboxEventStatus.NEW)
                 .build();
@@ -49,21 +49,26 @@ class ReservationOutboxPublisherTest {
         when(outboxEventRepository.findByStatus(OutboxEventStatus.NEW))
                 .thenReturn(List.of(event));
 
-        when(objectMapper.readValue(anyString(), eq(ReservationCreatedEvent.class)))
-                .thenReturn(new ReservationCreatedEvent(
+        ReservationCreatedEvent domainEvent =
+                new ReservationCreatedEvent(
                         10L,
                         1L,
                         5L,
                         LocalDateTime.now(),
                         LocalDateTime.now().plusHours(2)
-                ));
+                );
+
+        when(objectMapper.readValue(eq("{json}"), eq(ReservationCreatedEvent.class)))
+                .thenReturn(domainEvent);
 
         publisher.publishOutboxEvents();
 
-        verify(reservationProducer).sendReservationCreatedEvent(any(ReservationCreatedEvent.class));
+        verify(reservationProducer)
+                .sendReservationCreatedEvent(domainEvent);
 
         verify(outboxEventRepository).save(argThat(saved ->
-                saved.getId().equals(1L) && saved.getStatus() == OutboxEventStatus.SENT
+                saved.getId().equals(1L)
+                        && saved.getStatus() == OutboxEventStatus.SENT
         ));
 
         assertThat(event.getStatus()).isEqualTo(OutboxEventStatus.SENT);
@@ -75,7 +80,7 @@ class ReservationOutboxPublisherTest {
                 .id(1L)
                 .aggregateType("Reservation")
                 .aggregateId(10L)
-                .eventType("ReservationCreatedEvent")
+                .eventType(ReservationCreatedEvent.class.getName())
                 .payload("{broken-json}")
                 .status(OutboxEventStatus.NEW)
                 .build();
@@ -84,14 +89,15 @@ class ReservationOutboxPublisherTest {
                 .thenReturn(List.of(event));
 
         when(objectMapper.readValue(anyString(), eq(ReservationCreatedEvent.class)))
-                .thenThrow(new com.fasterxml.jackson.core.JsonParseException(null, "boom"));
+                .thenThrow(new RuntimeException("boom"));
 
         publisher.publishOutboxEvents();
 
         verifyNoInteractions(reservationProducer);
 
         verify(outboxEventRepository).save(argThat(saved ->
-                saved.getId().equals(1L) && saved.getStatus() == OutboxEventStatus.FAILED
+                saved.getId().equals(1L)
+                        && saved.getStatus() == OutboxEventStatus.FAILED
         ));
 
         assertThat(event.getStatus()).isEqualTo(OutboxEventStatus.FAILED);
