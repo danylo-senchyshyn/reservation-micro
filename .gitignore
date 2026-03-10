@@ -16,4 +16,4 @@ target/
 logs/
 
 # Load test raw JSON results (can be hundreds of MB)
-load-tests/results/**/*.json
+load-tests/results/**/*.jsonload-tests/MONOLITH_TEST_INSTRUCTIONS.md
