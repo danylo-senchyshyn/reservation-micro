@@ -1,4 +1,3 @@
-cat <<EOF > .gitignore
 # Java / Maven
 target/
 *.log
@@ -15,4 +14,6 @@ target/
 
 # Kafka / runtime
 logs/
-EOF
+
+# Load test raw JSON results (can be hundreds of MB)
+load-tests/results/**/*.json

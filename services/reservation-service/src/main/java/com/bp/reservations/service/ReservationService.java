@@ -39,14 +39,6 @@ public class ReservationService {
      */
     @Transactional
     public ReservationResponse createReservation(CreateReservationRequest request) {
-        log.info(
-                "Creating reservation: userId={}, resourceId={}, from={}, to={}",
-                request.userId(),
-                request.resourceId(),
-                request.from(),
-                request.to()
-        );
-
         if (!request.from().isBefore(request.to())) {
             throw new IllegalArgumentException("from must be before to");
         }
@@ -60,12 +52,6 @@ public class ReservationService {
                 .build();
 
         reservation = reservationRepository.save(reservation);
-
-        log.info(
-                "Reservation persisted: id={}, status={}",
-                reservation.getId(),
-                reservation.getStatus()
-        );
 
         ReservationCreatedEvent event = new ReservationCreatedEvent(
                 reservation.getId(),
@@ -85,16 +71,12 @@ public class ReservationService {
                     .createdAt(LocalDateTime.now())
                     .build();
             outboxEventRepository.save(outboxEvent);
-            log.info("Outbox event saved for reservationId={}", reservation.getId());
         } catch (JsonProcessingException e) {
             log.error("Failed to serialize ReservationCreatedEvent for reservationId={}: {}", reservation.getId(), e.getMessage());
             throw new RuntimeException("Failed to serialize event", e);
         }
 
-        log.info(
-                "Reservation created and outbox event added: reservationId={}",
-                reservation.getId()
-        );
+        log.info("Reservation created: reservationId={}", reservation.getId());
 
         return toResponse(reservation);
     }

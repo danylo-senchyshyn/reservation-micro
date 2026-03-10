@@ -5,7 +5,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Component;
+
+import java.util.concurrent.CompletableFuture;
 
 /**
  * The type Reservation producer.
@@ -24,9 +27,10 @@ public class ReservationProducer {
      * Send reservation created event.
      *
      * @param event the event
+     * @return future resolved when broker acknowledges the message
      */
-    public void sendReservationCreatedEvent(ReservationCreatedEvent event) {
-        log.info("Sending reservation created event: {}", event);
-        kafkaTemplate.send(topic, String.valueOf(event.reservationId()), event);
+    public CompletableFuture<SendResult<String, Object>> sendReservationCreatedEvent(ReservationCreatedEvent event) {
+        log.debug("KAFKA | Sending ReservationCreatedEvent: reservationId={}", event.reservationId());
+        return kafkaTemplate.send(topic, String.valueOf(event.reservationId()), event);
     }
 }

@@ -13,7 +13,13 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * The type Outbox event publisher.
@@ -27,51 +33,71 @@ public class OutboxEventPublisher {
     private final PaymentProducer paymentProducer;
     private final ObjectMapper objectMapper;
 
-    /**
-     * Publish outbox events.
-     */
-    @Scheduled(fixedRateString = "${app.outbox.scheduler-fixed-rate}") // Configurable rate, e.g., 5000ms
+    // Cache Class.forName results to avoid repeated class-loader lookups under load
+    private final Map<String, Class<?>> classCache = new ConcurrentHashMap<>();
+
+    // fixedDelay: next run starts only AFTER the previous one completes,
+    // preventing overlapping executions under load.
+    @Scheduled(fixedDelayString = "${app.outbox.scheduler-fixed-rate}")
     @Transactional
     public void publishOutboxEvents() {
-        log.debug("Checking for new outbox events to publish...");
         List<OutboxEvent> newEvents = outboxEventRepository.findByStatus(OutboxEventStatus.NEW);
 
         if (newEvents.isEmpty()) {
-            log.debug("No new outbox events found.");
             return;
         }
 
-        log.info("Found {} new outbox events to publish.", newEvents.size());
+        log.info("Outbox: publishing {} new events", newEvents.size());
+
+        List<OutboxEvent> toSave = new ArrayList<>(newEvents.size());
 
         for (OutboxEvent event : newEvents) {
             try {
-                // Deserialize the payload to the correct event type
-                Class<?> eventClass = Class.forName(event.getEventType());
+                Class<?> eventClass = classCache.computeIfAbsent(
+                        event.getEventType(), name -> {
+                            try {
+                                return Class.forName(name);
+                            } catch (ClassNotFoundException e) {
+                                throw new IllegalArgumentException("Unknown event class: " + name, e);
+                            }
+                        });
+
                 Object kafkaEvent = objectMapper.readValue(event.getPayload(), eventClass);
 
-                if (kafkaEvent instanceof PaymentConfirmedEvent) {
-                    paymentProducer.sendPaymentConfirmedEvent((PaymentConfirmedEvent) kafkaEvent);
-                } else if (kafkaEvent instanceof PaymentFailedEvent) {
-                    paymentProducer.sendPaymentFailedEvent((PaymentFailedEvent) kafkaEvent);
+                // Await broker acknowledgment before marking SENT.
+                // Prevents silent message loss when Kafka is slow or temporarily unavailable.
+                if (kafkaEvent instanceof PaymentConfirmedEvent confirmed) {
+                    paymentProducer.sendPaymentConfirmedEvent(confirmed)
+                            .get(5, TimeUnit.SECONDS);
+                } else if (kafkaEvent instanceof PaymentFailedEvent failed) {
+                    paymentProducer.sendPaymentFailedEvent(failed)
+                            .get(5, TimeUnit.SECONDS);
                 } else {
-                    log.error("Unsupported event type {} for outbox event id {}", event.getEventType(), event.getId());
-                    event.setStatus(OutboxEventStatus.FAILED); // Mark as failed due to unsupported type
-                    outboxEventRepository.save(event);
+                    log.error("Outbox: unsupported event type={} eventId={}", event.getEventType(), event.getId());
+                    event.setStatus(OutboxEventStatus.FAILED);
+                    toSave.add(event);
                     continue;
                 }
 
                 event.setStatus(OutboxEventStatus.SENT);
-                outboxEventRepository.save(event);
-                log.info("Published outbox event for paymentId={} (eventId={})", event.getAggregateId(), event.getId());
-            } catch (JsonProcessingException | ClassNotFoundException e) {
-                log.error("Failed to deserialize or find class for outbox event payload for eventId={}: {}", event.getId(), e.getMessage());
-                event.setStatus(OutboxEventStatus.FAILED); // Mark as failed due to serialization/class error
-                outboxEventRepository.save(event);
-            } catch (Exception e) { // Catch any other exceptions during Kafka sending
-                log.error("Failed to publish outbox event for eventId={}: {}", event.getId(), e.getMessage());
-                event.setStatus(OutboxEventStatus.FAILED); // Mark as failed due to an exception during publishing
-                outboxEventRepository.save(event);
+                log.debug("Outbox: sent eventId={} paymentId={}", event.getId(), event.getAggregateId());
+
+            } catch (JsonProcessingException | IllegalArgumentException e) {
+                log.error("Outbox: deserialize/class failed eventId={}: {}", event.getId(), e.getMessage());
+                event.setStatus(OutboxEventStatus.FAILED);
+            } catch (ExecutionException | TimeoutException e) {
+                log.error("Outbox: Kafka send failed eventId={}: {}", event.getId(), e.getMessage());
+                event.setStatus(OutboxEventStatus.FAILED);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                log.error("Outbox: interrupted while sending eventId={}", event.getId());
+                event.setStatus(OutboxEventStatus.FAILED);
             }
+
+            toSave.add(event);
         }
+
+        // Batch update — one round-trip instead of N individual UPDATEs
+        outboxEventRepository.saveAll(toSave);
     }
 }

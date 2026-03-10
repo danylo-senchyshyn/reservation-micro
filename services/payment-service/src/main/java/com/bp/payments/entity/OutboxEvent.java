@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Table(name = "outbox_events")
+@Table(name = "outbox_events", indexes = @Index(name = "idx_outbox_events_status", columnList = "status"))
 public class OutboxEvent {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

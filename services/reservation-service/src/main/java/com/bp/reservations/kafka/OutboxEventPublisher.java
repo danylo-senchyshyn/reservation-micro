@@ -12,7 +12,11 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * The type Outbox event publisher.
@@ -26,39 +30,50 @@ public class OutboxEventPublisher {
     private final ReservationProducer reservationProducer;
     private final ObjectMapper objectMapper;
 
-    /**
-     * Publish outbox events.
-     */
-    @Scheduled(fixedRateString = "${app.outbox.scheduler-fixed-rate}")
+    // fixedDelay: next run starts only AFTER the previous one completes,
+    // preventing overlapping executions under load.
+    @Scheduled(fixedDelayString = "${app.outbox.scheduler-fixed-rate}")
     @Transactional
     public void publishOutboxEvents() {
-        log.debug("Checking for new outbox events to publish...");
         List<OutboxEvent> newEvents = outboxEventRepository.findByStatus(OutboxEventStatus.NEW);
 
         if (newEvents.isEmpty()) {
-            log.debug("No new outbox events found.");
             return;
         }
 
-        log.info("Found {} new outbox events to publish.", newEvents.size());
+        log.info("Outbox: publishing {} new events", newEvents.size());
+
+        List<OutboxEvent> toSave = new ArrayList<>(newEvents.size());
 
         for (OutboxEvent event : newEvents) {
             try {
-                ReservationCreatedEvent reservationEvent = objectMapper.readValue(event.getPayload(), ReservationCreatedEvent.class);
-                reservationProducer.sendReservationCreatedEvent(reservationEvent);
+                ReservationCreatedEvent reservationEvent =
+                        objectMapper.readValue(event.getPayload(), ReservationCreatedEvent.class);
+
+                // Await broker acknowledgment before marking SENT.
+                // Prevents silent message loss when Kafka is slow or temporarily unavailable.
+                reservationProducer.sendReservationCreatedEvent(reservationEvent)
+                        .get(5, TimeUnit.SECONDS);
 
                 event.setStatus(OutboxEventStatus.SENT);
-                outboxEventRepository.save(event);
-                log.info("Published outbox event for reservationId={} (eventId={})", event.getAggregateId(), event.getId());
+                log.debug("Outbox: sent eventId={} reservationId={}", event.getId(), event.getAggregateId());
+
             } catch (JsonProcessingException e) {
-                log.error("Failed to deserialize outbox event payload for eventId={}: {}", event.getId(), e.getMessage());
+                log.error("Outbox: deserialize failed eventId={}: {}", event.getId(), e.getMessage());
                 event.setStatus(OutboxEventStatus.FAILED);
-                outboxEventRepository.save(event);
-            } catch (Exception e) {
-                log.error("Failed to publish outbox event for eventId={}: {}", event.getId(), e.getMessage());
-                event.setStatus(OutboxEventStatus.FAILED); // Mark as failed due to an exception during publishing
-                outboxEventRepository.save(event);
+            } catch (ExecutionException | TimeoutException e) {
+                log.error("Outbox: Kafka send failed eventId={}: {}", event.getId(), e.getMessage());
+                event.setStatus(OutboxEventStatus.FAILED);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                log.error("Outbox: interrupted while sending eventId={}", event.getId());
+                event.setStatus(OutboxEventStatus.FAILED);
             }
+
+            toSave.add(event);
         }
+
+        // Batch update — one round-trip instead of N individual UPDATEs
+        outboxEventRepository.saveAll(toSave);
     }
 }

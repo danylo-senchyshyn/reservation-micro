@@ -1,0 +1,50 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  # ── Spring Boot services (Micrometer/Prometheus endpoint) ──────────────────
+  - job_name: user-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['user-service:8080']
+        labels:
+          service: user-service
+
+  - job_name: reservation-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['reservation-service:8080']
+        labels:
+          service: reservation-service
+
+  - job_name: payment-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['payment-service:8080']
+        labels:
+          service: payment-service
+
+  - job_name: notification-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['notification-service:8080']
+        labels:
+          service: notification-service
+
+  - job_name: gateway-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['gateway-service:8080']
+        labels:
+          service: gateway-service
+
+  # ── Container-level resource metrics (CPU, RAM, network, disk I/O) ─────────
+  - job_name: cadvisor
+    static_configs:
+      - targets: ['cadvisor:8080']
+
+  # ── Prometheus itself ──────────────────────────────────────────────────────
+  - job_name: prometheus
+    static_configs:
+      - targets: ['localhost:9090']
