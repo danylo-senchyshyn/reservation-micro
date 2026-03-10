@@ -6,6 +6,7 @@ import com.bp.reservations.entity.OutboxEventStatus;
 import com.bp.reservations.kafka.OutboxEventPublisher;
 import com.bp.reservations.kafka.ReservationProducer;
 import com.bp.reservations.repository.OutboxEventRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,6 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -41,7 +43,7 @@ class ReservationOutboxPublisherTest {
                 .id(1L)
                 .aggregateType("Reservation")
                 .aggregateId(10L)
-                .eventType(ReservationCreatedEvent.class.getName())
+                .eventType(ReservationCreatedEvent.class.getSimpleName())
                 .payload("{json}")
                 .status(OutboxEventStatus.NEW)
                 .build();
@@ -61,15 +63,19 @@ class ReservationOutboxPublisherTest {
         when(objectMapper.readValue(eq("{json}"), eq(ReservationCreatedEvent.class)))
                 .thenReturn(domainEvent);
 
+        when(reservationProducer.sendReservationCreatedEvent(domainEvent))
+                .thenReturn(CompletableFuture.completedFuture(null));
+
         publisher.publishOutboxEvents();
 
-        verify(reservationProducer)
-                .sendReservationCreatedEvent(domainEvent);
+        verify(reservationProducer).sendReservationCreatedEvent(domainEvent);
 
-        verify(outboxEventRepository).save(argThat(saved ->
-                saved.getId().equals(1L)
-                        && saved.getStatus() == OutboxEventStatus.SENT
-        ));
+        verify(outboxEventRepository).saveAll(argThat(saved -> {
+            List<OutboxEvent> list = (List<OutboxEvent>) saved;
+            return list.size() == 1
+                    && list.get(0).getId().equals(1L)
+                    && list.get(0).getStatus() == OutboxEventStatus.SENT;
+        }));
 
         assertThat(event.getStatus()).isEqualTo(OutboxEventStatus.SENT);
     }
@@ -80,7 +86,7 @@ class ReservationOutboxPublisherTest {
                 .id(1L)
                 .aggregateType("Reservation")
                 .aggregateId(10L)
-                .eventType(ReservationCreatedEvent.class.getName())
+                .eventType(ReservationCreatedEvent.class.getSimpleName())
                 .payload("{broken-json}")
                 .status(OutboxEventStatus.NEW)
                 .build();
@@ -89,16 +95,18 @@ class ReservationOutboxPublisherTest {
                 .thenReturn(List.of(event));
 
         when(objectMapper.readValue(anyString(), eq(ReservationCreatedEvent.class)))
-                .thenThrow(new RuntimeException("boom"));
+                .thenThrow(new JsonProcessingException("boom") {});
 
         publisher.publishOutboxEvents();
 
         verifyNoInteractions(reservationProducer);
 
-        verify(outboxEventRepository).save(argThat(saved ->
-                saved.getId().equals(1L)
-                        && saved.getStatus() == OutboxEventStatus.FAILED
-        ));
+        verify(outboxEventRepository).saveAll(argThat(saved -> {
+            List<OutboxEvent> list = (List<OutboxEvent>) saved;
+            return list.size() == 1
+                    && list.get(0).getId().equals(1L)
+                    && list.get(0).getStatus() == OutboxEventStatus.FAILED;
+        }));
 
         assertThat(event.getStatus()).isEqualTo(OutboxEventStatus.FAILED);
     }
@@ -112,6 +120,6 @@ class ReservationOutboxPublisherTest {
 
         verify(outboxEventRepository).findByStatus(OutboxEventStatus.NEW);
         verifyNoInteractions(reservationProducer);
-        verify(outboxEventRepository, never()).save(any());
+        verify(outboxEventRepository, never()).saveAll(any());
     }
 }
