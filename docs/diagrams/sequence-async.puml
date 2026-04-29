@@ -1,0 +1,68 @@
+@startuml sequence-async
+
+skinparam defaultFontSize 14
+skinparam sequenceMessageAlign center
+skinparam ParticipantPadding 30
+skinparam BoxPadding 10
+skinparam sequenceArrowThickness 1.5
+skinparam NoteBackgroundColor #FFFFCC
+skinparam NoteBorderColor #AAAAAA
+skinparam SequenceGroupBodyBackgroundColor #F5F5FF
+
+autonumber
+queue "Kafka\nreservation-created" as KafkaReservation
+participant "Payment\nService" as Payment
+database "payment_db\n(outbox_event)" as PaymentDB
+queue "Kafka\npayment-confirmed" as KafkaConfirmed
+queue "Kafka\npayment-failed" as KafkaFailed
+participant "Notification\nService" as Notification
+participant "Reservation\nService" as Reservation
+
+== 3. Payment Processing (async) ==
+
+KafkaReservation -> Payment: Consume ReservationCreatedEvent\n(group: payment-service-group)
+activate Payment
+Payment -> PaymentDB: BEGIN TRANSACTION\n  1. INSERT payment (status: CREATED)\n  2. INSERT outbox_event (status: NEW)
+PaymentDB --> Payment: OK
+
+alt Payment Confirmed (via PATCH /api/payments/{id}/confirm)
+    Payment -> PaymentDB: BEGIN TRANSACTION\n  1. UPDATE payment (status: CONFIRMED)\n  2. INSERT outbox_event (PaymentConfirmedEvent)
+    Payment -> KafkaConfirmed: Publish PaymentConfirmedEvent\n(Outbox Scheduler)
+    activate KafkaConfirmed
+
+    KafkaConfirmed -> Notification: Consume PaymentConfirmedEvent\n(group: notification-service-group)
+    activate Notification
+    Notification -> Notification: INSERT notification_log
+    deactivate Notification
+
+    KafkaConfirmed -> Reservation: Consume PaymentConfirmedEvent\n(group: reservation-service-group)
+    activate Reservation
+    Reservation -> Reservation: UPDATE reservation\nstatus: PAID
+    deactivate Reservation
+    deactivate KafkaConfirmed
+
+else Payment Failed (via PATCH /api/payments/{id}/fail)
+    Payment -> PaymentDB: BEGIN TRANSACTION\n  1. UPDATE payment (status: FAILED)\n  2. INSERT outbox_event (PaymentFailedEvent)
+    Payment -> KafkaFailed: Publish PaymentFailedEvent\n(Outbox Scheduler)
+    activate KafkaFailed
+
+    KafkaFailed -> Notification: Consume PaymentFailedEvent\n(group: notification-service-group)
+    activate Notification
+    Notification -> Notification: INSERT notification_log
+    deactivate Notification
+
+    KafkaFailed -> Reservation: Consume PaymentFailedEvent\n(group: reservation-service-group)
+    activate Reservation
+    Reservation -> Reservation: UPDATE reservation\nstatus: PAYMENT_FAILED
+    deactivate Reservation
+    deactivate KafkaFailed
+end
+deactivate Payment
+
+note over KafkaReservation, Reservation
+  Full E2E time: 4.7–10.3s (median 5.21s)
+  due to 2x Outbox scheduler jitter (0–5s per hop).
+  Bimodal distribution caused by fixedDelay=5000ms.
+end note
+
+@enduml

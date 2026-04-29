@@ -1,0 +1,53 @@
+@startuml sequence-sync
+
+skinparam defaultFontSize 14
+skinparam sequenceMessageAlign center
+skinparam ParticipantPadding 30
+skinparam BoxPadding 10
+skinparam sequenceArrowThickness 1.5
+skinparam NoteBackgroundColor #FFFFCC
+skinparam NoteBorderColor #AAAAAA
+skinparam SequenceGroupBodyBackgroundColor #F5F5FF
+
+autonumber
+actor Client
+boundary Gateway
+participant "Reservation\nService" as Reservation
+database "reservation_db\n(outbox_event)" as DB
+queue "Kafka\nreservation-service\n.reservation-created" as KafkaReservation
+
+== 1. Synchronous HTTP Request ==
+
+Client -> Gateway: POST /api/reservations
+activate Gateway
+Gateway -> Reservation: Create Reservation Request
+activate Reservation
+
+Reservation -> DB: BEGIN TRANSACTION\n  1. INSERT reservation (status: CREATED)\n  2. INSERT outbox_event (status: NEW)
+DB --> Reservation: OK
+Reservation --> Gateway: 201 Created (id, status=CREATED)
+deactivate Reservation
+Gateway --> Client: HTTP 201 Created
+deactivate Gateway
+
+note over Client, KafkaReservation
+  Client gets an immediate HTTP response.
+  Async processing continues in background.
+end note
+
+== 2. Outbox Scheduler (every 5s) ==
+
+Reservation -> DB: SELECT outbox_event WHERE status=NEW
+DB --> Reservation: [ReservationCreatedEvent]
+Reservation -> KafkaReservation: Publish ReservationCreatedEvent
+activate KafkaReservation
+Reservation -> DB: UPDATE outbox_event SET status=SENT
+KafkaReservation --> Reservation: ack
+deactivate KafkaReservation
+
+note over Reservation
+  Outbox guarantees at-least-once delivery:
+  DB write and Kafka publish are decoupled.
+end note
+
+@enduml

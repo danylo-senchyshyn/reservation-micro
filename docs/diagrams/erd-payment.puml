@@ -1,28 +1,36 @@
-@startuml
+@startuml erd-payment
 entity "Payment" {
-    + id: UUID <<PK>>
+    + id : BIGINT <<PK>>
     --
-    reservationId: UUID <<FK>>
-    amount: DECIMAL(10,2)
-    currency: VARCHAR(3)
-    status: VARCHAR(20) (e.g., PENDING, COMPLETED, FAILED)
-    transactionId: VARCHAR(255) <<Unique>> (External payment gateway reference)
-    paymentDate: TIMESTAMP
-    createdAt: TIMESTAMP
-    updatedAt: TIMESTAMP
+    reservation_id : BIGINT <<UNIQUE, NOT NULL>>
+    amount : DECIMAL(10,2) <<NOT NULL>>
+    status : VARCHAR(20) <<NOT NULL>>
+    created_at : TIMESTAMP <<NOT NULL>>
+    .. Status values: ..
+    CREATED | CONFIRMED | FAILED | CANCELLED
 }
 
 entity "OutboxEvent" {
-    + id: UUID <<PK>>
+    + id : BIGINT <<PK>>
     --
-    aggregateType: VARCHAR(255)
-    aggregateId: UUID
-    eventType: VARCHAR(255)
-    payload: JSONB
-    timestamp: TIMESTAMP
-    status: VARCHAR(20) (e.g., PENDING, PUBLISHED)
-    traceId: VARCHAR(255) (Optional, for distributed tracing)
+    created_at : TIMESTAMP <<NOT NULL>>
+    aggregate_type : VARCHAR(255) <<NOT NULL>>
+    aggregate_id : BIGINT <<NOT NULL>>
+    event_type : VARCHAR(255) <<NOT NULL>>
+    payload : TEXT (JSON serialized event)
+    status : VARCHAR(20) <<NOT NULL>>
+    .. Status values: ..
+    NEW | SENT | FAILED
+    .. Index: ..
+    @Index(columnList = "status")
 }
 
-Payment "1" -- "1" OutboxEvent : Creates OutboxEvent (e.g., PaymentConfirmed/Failed)
+note bottom of OutboxEvent
+  Polled every 5s by OutboxEventPublisher.
+  On CONFIRMED: publishes PaymentConfirmedEvent.
+  On FAILED: publishes PaymentFailedEvent.
+end note
+
+Payment "1" -- "0..2" OutboxEvent : Creates on confirm/fail\n(PaymentConfirmedEvent or PaymentFailedEvent)
+
 @enduml
