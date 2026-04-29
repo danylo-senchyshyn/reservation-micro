@@ -9,6 +9,9 @@ target/
 # OS
 .DS_Store
 
+# Local AI assistant instructions
+CLAUDE.md
+
 # Docker
 .env
 
