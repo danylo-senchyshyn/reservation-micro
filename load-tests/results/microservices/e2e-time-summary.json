@@ -1,0 +1,167 @@
+{
+    "root_group": {
+        "path": "",
+        "id": "d41d8cd98f00b204e9800998ecf8427e",
+        "groups": {},
+        "checks": {
+                "reservation created (2xx)": {
+                    "name": "reservation created (2xx)",
+                    "path": "::reservation created (2xx)",
+                    "id": "1f056a81b29d0923a230d711c76f9515",
+                    "passes": 18,
+                    "fails": 0
+                },
+                "payment confirmed (200)": {
+                    "fails": 0,
+                    "name": "payment confirmed (200)",
+                    "path": "::payment confirmed (200)",
+                    "id": "1b61b36cebdae5ba757df2b5470b3697",
+                    "passes": 18
+                }
+            },
+        "name": ""
+    },
+    "metrics": {
+        "dropped_iterations": {
+            "count": 2,
+            "rate": 0.003173606400245033
+        },
+        "vus_max": {
+            "value": 1,
+            "min": 1,
+            "max": 1
+        },
+        "http_req_waiting": {
+            "p(95)": 19.4346,
+            "avg": 9.647254460822353,
+            "min": 2.446,
+            "med": 7.746,
+            "max": 122.941,
+            "p(90)": 15.5584
+        },
+        "checks": {
+            "fails": 0,
+            "passes": 36,
+            "value": 1
+        },
+        "e2e_total_ms": {
+            "avg": 0,
+            "min": 0,
+            "med": 0,
+            "max": 0,
+            "p(90)": 0,
+            "p(95)": 0,
+            "thresholds": {
+                "p(95)<25000": false
+            }
+        },
+        "e2e_failed": {
+            "count": 18,
+            "rate": 0.0285624576022053,
+            "thresholds": {
+                "count<3": true
+            }
+        },
+        "http_req_sending": {
+            "med": 0.024,
+            "max": 1.052,
+            "p(90)": 0.038,
+            "p(95)": 0.048,
+            "avg": 0.027965089216446855,
+            "min": 0.008
+        },
+        "http_req_blocked": {
+            "p(95)": 0.023,
+            "avg": 0.01793328161365391,
+            "min": 0.002,
+            "med": 0.008,
+            "max": 6.574,
+            "p(90)": 0.017
+        },
+        "data_sent": {
+            "count": 118990,
+            "rate": 188.81371278257825
+        },
+        "http_req_failed": {
+            "passes": 0,
+            "fails": 1289,
+            "value": 0
+        },
+        "http_reqs": {
+            "count": 1289,
+            "rate": 2.045389324957924
+        },
+        "iteration_duration": {
+            "avg": 34991.943659666664,
+            "min": 32252.407791,
+            "med": 35257.623854,
+            "max": 35398.746292,
+            "p(90)": 35361.7119911,
+            "p(95)": 35375.55365185
+        },
+        "http_req_duration{expected_response:true}": {
+            "avg": 9.921785880527548,
+            "min": 2.565,
+            "med": 7.946,
+            "max": 123.057,
+            "p(90)": 16.009600000000006,
+            "p(95)": 20.02599999999999
+        },
+        "http_req_connecting": {
+            "med": 0,
+            "max": 0.527,
+            "p(90)": 0,
+            "p(95)": 0,
+            "avg": 0.0007447633824670288,
+            "min": 0
+        },
+        "http_req_receiving": {
+            "avg": 0.24656633048875093,
+            "min": 0.026,
+            "med": 0.083,
+            "max": 22.888,
+            "p(90)": 0.5244000000000002,
+            "p(95)": 0.7641999999999999
+        },
+        "data_received": {
+            "rate": 458.42903131859515,
+            "count": 288901
+        },
+        "http_req_duration": {
+            "p(90)": 16.009600000000006,
+            "p(95)": 20.02599999999999,
+            "avg": 9.921785880527548,
+            "min": 2.565,
+            "med": 7.946,
+            "max": 123.057
+        },
+        "http_req_tls_handshaking": {
+            "med": 0,
+            "max": 0,
+            "p(90)": 0,
+            "p(95)": 0,
+            "avg": 0,
+            "min": 0
+        },
+        "e2e_to_payment_ms": {
+            "avg": 4867.555555555556,
+            "min": 2094,
+            "med": 5160.5,
+            "max": 5231,
+            "p(90)": 5193.4,
+            "p(95)": 5203.8
+        },
+        "iterations": {
+            "count": 18,
+            "rate": 0.0285624576022053
+        },
+        "vus": {
+            "value": 0,
+            "min": 0,
+            "max": 1
+        }
+    },
+    "setup_data": {
+        "userId": 1
+    }
+}

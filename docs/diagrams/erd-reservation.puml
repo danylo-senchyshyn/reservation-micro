@@ -1,29 +1,37 @@
-@startuml
+@startuml erd-reservation
 entity "Reservation" {
-    + id: UUID <<PK>>
+    + id : BIGINT <<PK>>
     --
-    userId: UUID <<FK>>
-    resourceId: UUID <<FK>>
-    amount: DECIMAL(10,2)
-    status: VARCHAR(20) (e.g., PENDING, CONFIRMED, FAILED, CANCELLED)
-    bookingDate: TIMESTAMP
-    startDate: TIMESTAMP
-    endDate: TIMESTAMP
-    createdAt: TIMESTAMP
-    updatedAt: TIMESTAMP
+    user_id : BIGINT <<NOT NULL>>
+    resource_id : BIGINT <<NOT NULL>>
+    start_time : TIMESTAMP <<NOT NULL>>
+    end_time : TIMESTAMP <<NOT NULL>>
+    status : VARCHAR(20) <<NOT NULL>>
+    .. Status values: ..
+    CREATED | PAID | PAYMENT_FAILED | CANCELLED
 }
 
 entity "OutboxEvent" {
-    + id: UUID <<PK>>
+    + id : BIGINT <<PK>>
     --
-    aggregateType: VARCHAR(255)
-    aggregateId: UUID
-    eventType: VARCHAR(255)
-    payload: JSONB
-    timestamp: TIMESTAMP
-    status: VARCHAR(20) (e.g., PENDING, PUBLISHED)
-    traceId: VARCHAR(255) (Optional, for distributed tracing)
+    created_at : TIMESTAMP <<NOT NULL>>
+    aggregate_type : VARCHAR(255) <<NOT NULL>>
+    aggregate_id : BIGINT <<NOT NULL>>
+    event_type : VARCHAR(255) <<NOT NULL>>
+    payload : TEXT (JSON serialized event)
+    status : VARCHAR(20) <<NOT NULL>>
+    .. Status values: ..
+    NEW | SENT | FAILED
+    .. Index: ..
+    @Index(columnList = "status")
 }
 
-Reservation "1" -- "1" OutboxEvent : Creates OutboxEvent (ReservationCreated)
+note bottom of OutboxEvent
+  Polled every 5s by OutboxEventPublisher.
+  NEW events published to Kafka, then marked SENT.
+  Ensures atomicity between DB write and Kafka publish.
+end note
+
+Reservation "1" -- "0..1" OutboxEvent : Creates on reservation creation\n(ReservationCreatedEvent)
+
 @enduml

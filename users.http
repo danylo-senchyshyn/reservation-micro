@@ -30,8 +30,8 @@ Content-Type: application/json
 {
   "userId": {{userId}},
   "resourceId": 5,
-  "from": "2026-01-10T10:00",
-  "to": "2026-01-10T12:00"
+  "from": "2026-02-10T10:00",
+  "to": "2026-02-10T12:00"
 }
 
 > {%
@@ -45,10 +45,10 @@ GET http://localhost:8080/api/reservations
 GET http://localhost:8080/api/payments/4
 
 ### Confirm payment
-POST http://localhost:8080/api/payments/12/confirm
+POST http://localhost:8080/api/payments/2/confirm
 
 ### Fail payment
-POST http://localhost:8080/api/payments/13/fail?reason=insufficient_funds
+POST http://localhost:8080/api/payments/3/fail?reason=insufficient_funds
 Content-Type: application/json
 
 {
