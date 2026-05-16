@@ -18,3 +18,24 @@ spring:
           uri: http://payment-service:8083
           predicates:
             - Path=/api/payments/**
+
+        - id: user-service-swagger
+          uri: http://user-service:8081
+          predicates:
+            - Path=/user-service/swagger-ui/**,/user-service/v3/api-docs/**
+          filters:
+            - StripPrefix=1
+
+        - id: reservation-service-swagger
+          uri: http://reservation-service:8082
+          predicates:
+            - Path=/reservation-service/swagger-ui/**,/reservation-service/v3/api-docs/**
+          filters:
+            - StripPrefix=1
+
+        - id: payment-service-swagger
+          uri: http://payment-service:8083
+          predicates:
+            - Path=/payment-service/swagger-ui/**,/payment-service/v3/api-docs/**
+          filters:
+            - StripPrefix=1

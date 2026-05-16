@@ -1,6 +1,7 @@
 package com.bp.reservations.api.error;
 
 import com.bp.reservations.exception.EntityNotFoundException;
+import io.swagger.v3.oas.annotations.Hidden;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,6 +19,7 @@ import java.util.stream.Collectors;
 /**
  * The type Global exception handler.
  */
+@Hidden
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
