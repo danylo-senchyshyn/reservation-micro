@@ -39,3 +39,15 @@ spring:
             - Path=/payment-service/swagger-ui/**,/payment-service/v3/api-docs/**
           filters:
             - StripPrefix=1
+
+        - id: notification-service
+          uri: http://notification-service:8084
+          predicates:
+            - Path=/api/notifications/**
+
+        - id: notification-service-swagger
+          uri: http://notification-service:8084
+          predicates:
+            - Path=/notification-service/swagger-ui/**,/notification-service/v3/api-docs/**
+          filters:
+            - StripPrefix=1
